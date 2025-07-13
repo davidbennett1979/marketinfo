@@ -1,5 +1,9 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import MarketIndices from '@/components/dashboard/MarketIndices'
+import CryptoTracker from '@/components/dashboard/CryptoTracker'
+import NewsFeed from '@/components/dashboard/NewsFeed'
+import StockCard from '@/components/dashboard/StockCard'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -10,46 +14,52 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
+  // Popular stocks to display
+  const watchlistStocks = ['AAPL', 'MSFT', 'GOOGL', 'TSLA']
+
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Trading Dashboard</h1>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Market Overview */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Market Overview</h2>
-            <p className="text-gray-600">Market indices will appear here</p>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Market Data */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Market Indices */}
+            <MarketIndices />
+
+            {/* Watchlist Stocks */}
+            <div>
+              <h2 className="text-xl font-semibold mb-4">Watchlist</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {watchlistStocks.map((symbol) => (
+                  <StockCard key={symbol} symbol={symbol} />
+                ))}
+              </div>
+            </div>
+
+            {/* Crypto Tracker */}
+            <CryptoTracker />
           </div>
 
-          {/* Watchlist */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Watchlist</h2>
-            <p className="text-gray-600">Your watched stocks will appear here</p>
-          </div>
-
-          {/* Top Movers */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Top Movers</h2>
-            <p className="text-gray-600">Top gaining/losing stocks will appear here</p>
-          </div>
-
-          {/* Crypto Tracker */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Cryptocurrency</h2>
-            <p className="text-gray-600">Crypto prices will appear here</p>
-          </div>
-
-          {/* News Feed */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Financial News</h2>
-            <p className="text-gray-600">Latest news will appear here</p>
-          </div>
-
-          {/* Earnings Calendar */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Earnings Today</h2>
-            <p className="text-gray-600">Earnings reports will appear here</p>
+          {/* Right Column - News */}
+          <div className="space-y-6">
+            <NewsFeed />
+            
+            {/* Earnings Calendar */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4">Earnings Today</h2>
+              <div className="space-y-2">
+                <div className="text-sm">
+                  <div className="font-medium">AAPL - Apple Inc.</div>
+                  <div className="text-gray-500">After Close • Est. EPS: $1.95</div>
+                </div>
+                <div className="text-sm">
+                  <div className="font-medium">MSFT - Microsoft</div>
+                  <div className="text-gray-500">After Close • Est. EPS: $2.65</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

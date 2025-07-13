@@ -122,8 +122,8 @@ A real-time web-based dashboard that aggregates financial data from multiple sou
 - [x] Integrate yfinance for stock data
 - [x] Add CoinGecko for crypto prices
 - [x] Implement data caching layer
-- [ ] Create web scraping infrastructure
-- [ ] Build basic dashboard widgets
+- [x] Create web scraping infrastructure
+- [x] Build basic dashboard widgets
 
 ### Phase 3: News & Sentiment (Week 5-6)
 - [ ] Set up RSS feed aggregator
@@ -358,7 +358,7 @@ A real-time web-based dashboard that aggregates financial data from multiple sou
 - [x] Create yfinance integration service
 - [x] Create CoinGecko API client
 - [x] Build Redis caching layer
-- [ ] Create base scraper class
+- [x] Create base scraper class
 - [ ] Implement earnings calendar scraper
 - [ ] Implement short interest scraper
 - [ ] Implement IPO calendar scraper
@@ -370,10 +370,10 @@ A real-time web-based dashboard that aggregates financial data from multiple sou
 
 ### Frontend Components
 - [x] Create layout component with navigation
-- [ ] Build market overview widget
-- [ ] Create stock price card component
-- [ ] Build crypto tracker component
-- [ ] Create news feed component
+- [x] Build market overview widget
+- [x] Create stock price card component
+- [x] Build crypto tracker component
+- [x] Create news feed component
 - [ ] Build earnings calendar table
 - [ ] Create watchlist component
 - [ ] Build search bar with autocomplete
