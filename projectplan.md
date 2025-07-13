@@ -115,13 +115,13 @@ A real-time web-based dashboard that aggregates financial data from multiple sou
 - [x] Set up development environment
 - [x] Create basic project structure
 - [x] Implement authentication system
-- [ ] Design database schema
+- [x] Design database schema
 - [x] Create basic UI layout and navigation
 
 ### Phase 2: Core Data Integration (Week 3-4)
-- [ ] Integrate yfinance for stock data
-- [ ] Add CoinGecko for crypto prices
-- [ ] Implement data caching layer
+- [x] Integrate yfinance for stock data
+- [x] Add CoinGecko for crypto prices
+- [x] Implement data caching layer
 - [ ] Create web scraping infrastructure
 - [ ] Build basic dashboard widgets
 
@@ -333,14 +333,14 @@ A real-time web-based dashboard that aggregates financial data from multiple sou
 
 ### Supabase Configuration
 - [x] Enable email/password authentication
-- [ ] Create users table schema
-- [ ] Create watchlists table
-- [ ] Create user_preferences table
-- [ ] Create cached_stock_data table
-- [ ] Create news_articles table
-- [ ] Create trade_recommendations table
-- [ ] Set up Row Level Security policies
-- [ ] Configure real-time subscriptions
+- [x] Create users table schema
+- [x] Create watchlists table
+- [x] Create user_preferences table
+- [x] Create cached_stock_data table
+- [x] Create news_articles table
+- [x] Create trade_recommendations table
+- [x] Set up Row Level Security policies
+- [x] Configure real-time subscriptions
 - [x] Generate API keys and configure environment
 
 ### Authentication Implementation
@@ -355,9 +355,9 @@ A real-time web-based dashboard that aggregates financial data from multiple sou
 
 ### Backend Services
 - [x] Set up FastAPI project structure
-- [ ] Create yfinance integration service
-- [ ] Create CoinGecko API client
-- [ ] Build Redis caching layer
+- [x] Create yfinance integration service
+- [x] Create CoinGecko API client
+- [x] Build Redis caching layer
 - [ ] Create base scraper class
 - [ ] Implement earnings calendar scraper
 - [ ] Implement short interest scraper

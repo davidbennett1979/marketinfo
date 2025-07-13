@@ -2,6 +2,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
+import sys
+import logging
+
+# Add the current directory to Python path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
 # Load environment variables
 load_dotenv()
@@ -18,6 +26,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Import and include routers
+from api.stocks import router as stocks_router
+from api.crypto import router as crypto_router
+
+app.include_router(stocks_router)
+app.include_router(crypto_router)
+
 @app.get("/")
 async def root():
     return {"message": "Trading Dashboard API"}
@@ -25,6 +40,10 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+@app.get("/test")
+async def test_endpoint():
+    return {"message": "Test endpoint works"}
 
 if __name__ == "__main__":
     import uvicorn
