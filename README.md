@@ -5,12 +5,17 @@ A real-time financial market dashboard that aggregates stock prices, cryptocurre
 ## Features
 
 - 📈 **Real-time Market Data**: Track stocks and cryptocurrencies with live price updates
-- 📰 **Financial News Aggregation**: Latest market news from multiple sources
+- 📰 **Financial News Aggregation**: Latest market news from multiple RSS feeds
 - 💹 **Market Indices**: Monitor S&P 500, NASDAQ, DOW, and more
-- 🔍 **Sentiment Analysis**: Social media sentiment from Reddit and Twitter
+- 🔍 **Advanced Sentiment Analysis**: 
+  - Multi-source sentiment (Reddit, StockTwits)
+  - Real-time social media trending
+  - Bullish/bearish indicators with confidence scores
+  - Combined sentiment from multiple sources
 - 📊 **Interactive Charts**: Historical price data visualization
 - 🔐 **User Authentication**: Secure login with Supabase
 - 💾 **Watchlist**: Save and track your favorite symbols
+- 🤖 **AI-Powered Analysis**: TextBlob NLP with financial keyword detection
 
 ## Tech Stack
 
@@ -27,6 +32,9 @@ A real-time financial market dashboard that aggregates stock prices, cryptocurre
 - **CoinGecko API** - Cryptocurrency data
 - **Redis** - Caching layer
 - **BeautifulSoup4** - Web scraping
+- **PRAW** - Reddit API wrapper
+- **TextBlob** - Sentiment analysis
+- **Celery** - Background task processing
 
 ## Getting Started
 
@@ -63,6 +71,12 @@ A real-time financial market dashboard that aggregates stock prices, cryptocurre
    SUPABASE_URL=your_supabase_url
    SUPABASE_KEY=your_service_role_key
    REDIS_URL=redis://localhost:6379
+   # Optional: Reddit API (for live sentiment)
+   REDDIT_CLIENT_ID=your_reddit_client_id
+   REDDIT_CLIENT_SECRET=your_reddit_client_secret
+   REDDIT_USER_AGENT=TradingDashboard/1.0
+   # Optional: NewsAPI key
+   NEWSAPI_KEY=your_newsapi_key
    ```
 
 4. **Start Redis**
@@ -102,6 +116,18 @@ The application will be available at:
 - `GET /api/crypto/price/{coin_id}` - Get crypto price
 - `GET /api/crypto/top/{limit}` - Get top cryptos by market cap
 - `GET /api/crypto/history/{coin_id}` - Get historical data
+
+### Sentiment Analysis
+- `GET /api/sentiment/reddit/{subreddit}` - Get Reddit sentiment for a subreddit
+- `GET /api/sentiment/reddit/wsb/trending` - Get trending posts from r/wallstreetbets
+- `GET /api/sentiment/stocktwits/{symbol}` - Get StockTwits sentiment
+- `GET /api/sentiment/combined/{symbol}` - Get combined sentiment from all sources
+- `POST /api/sentiment/analyze-text` - Analyze custom text sentiment
+
+### News & Data
+- `GET /api/news/latest` - Get latest financial news
+- `GET /api/news/earnings-calendar` - Get earnings calendar
+- `GET /api/news/short-interest` - Get high short interest stocks
 
 ## Development
 

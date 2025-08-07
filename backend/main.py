@@ -30,10 +30,12 @@ app.add_middleware(
 from api.stocks import router as stocks_router
 from api.crypto import router as crypto_router
 from api.news import router as news_router
+from api.sentiment import router as sentiment_router
 
 app.include_router(stocks_router)
 app.include_router(crypto_router)
 app.include_router(news_router)
+app.include_router(sentiment_router)
 
 @app.get("/")
 async def root():

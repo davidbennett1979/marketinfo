@@ -126,11 +126,11 @@ A real-time web-based dashboard that aggregates financial data from multiple sou
 - [x] Build basic dashboard widgets
 
 ### Phase 3: News & Sentiment (Week 5-6)
-- [ ] Set up RSS feed aggregator
-- [ ] Implement Reddit API connection
-- [ ] Create web scrapers for StockTwits
-- [ ] Implement basic sentiment analysis
-- [ ] Add sentiment indicators
+- [x] Set up RSS feed aggregator
+- [x] Implement Reddit API connection
+- [x] Create web scrapers for StockTwits
+- [x] Implement basic sentiment analysis
+- [x] Add sentiment indicators
 
 ### Phase 4: Advanced Features (Week 7-8)
 - [ ] Add earnings calendar (scraping)

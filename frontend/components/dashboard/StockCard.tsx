@@ -2,6 +2,7 @@
 
 import { useStockPrice } from '@/hooks/useMarketData'
 import { ArrowUpIcon, ArrowDownIcon, TrendingUpIcon } from 'lucide-react'
+import SentimentIndicator from './SentimentIndicator'
 
 interface StockCardProps {
   symbol: string
@@ -53,8 +54,9 @@ export default function StockCard({ symbol }: StockCardProps) {
         </div>
       </div>
       
-      <div className="mt-3 pt-3 border-t text-xs text-gray-500">
-        <div className="flex justify-between">
+      <div className="mt-3 pt-3 border-t space-y-2">
+        <SentimentIndicator symbol={data.symbol} />
+        <div className="flex justify-between text-xs text-gray-500">
           <span>Vol: {(data.volume / 1000000).toFixed(1)}M</span>
           <span>Cap: ${(data.market_cap / 1000000000).toFixed(1)}B</span>
         </div>

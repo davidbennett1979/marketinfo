@@ -4,6 +4,7 @@ import MarketIndices from '@/components/dashboard/MarketIndices'
 import CryptoTracker from '@/components/dashboard/CryptoTracker'
 import NewsFeed from '@/components/dashboard/NewsFeed'
 import StockCard from '@/components/dashboard/StockCard'
+import SentimentOverview from '@/components/dashboard/SentimentOverview'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -42,9 +43,11 @@ export default async function DashboardPage() {
             <CryptoTracker />
           </div>
 
-          {/* Right Column - News */}
+          {/* Right Column - News & Sentiment */}
           <div className="space-y-6">
             <NewsFeed />
+            
+            <SentimentOverview />
             
             {/* Earnings Calendar */}
             <div className="bg-white rounded-lg shadow p-6">
