@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { TrendingUpIcon, TrendingDownIcon, MessageCircleIcon, MessageSquareIcon } from 'lucide-react'
+import { useRealTimeData } from '@/hooks/useRealTimeData'
+import RealTimeStatus from '@/components/common/RealTimeStatus'
 
 interface SentimentOverviewProps {
   className?: string
@@ -20,31 +22,25 @@ interface TrendingPost {
 }
 
 export default function SentimentOverview({ className = '' }: SentimentOverviewProps) {
-  const [trendingPosts, setTrendingPosts] = useState<TrendingPost[]>([])
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchTrendingData()
-  }, [])
-
-  const fetchTrendingData = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/sentiment/reddit/wsb/trending?limit=5`)
-      if (!response.ok) throw new Error('Failed to fetch trending data')
-      
-      const data = await response.json()
-      setTrendingPosts(data.slice(0, 5)) // Top 5 posts
-    } catch (err) {
-      setError('Failed to load sentiment data')
-      console.error('Sentiment fetch error:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Use real-time data hook for sentiment
+  const { 
+    data: trendingPosts, 
+    loading, 
+    isConnected, 
+    lastUpdate, 
+    refetch 
+  } = useRealTimeData<TrendingPost[]>({
+    url: `${process.env.NEXT_PUBLIC_API_URL}/api/sentiment/reddit/wsb/trending?limit=5`,
+    refreshInterval: 90000, // 1.5 minutes for sentiment updates
+    onData: (data) => {
+      // Ensure we only get top 5 posts
+      const limitedData = data?.slice(0, 5) || []
+      return limitedData
+    },
+    onError: (err) => setError(err.message)
+  })
 
   const getSentimentColor = (classification: string) => {
     switch (classification) {
@@ -68,7 +64,7 @@ export default function SentimentOverview({ className = '' }: SentimentOverviewP
     }
   }
 
-  if (loading) {
+  if (loading && (!trendingPosts || trendingPosts.length === 0)) {
     return (
       <div className={`bg-white rounded-lg shadow p-6 ${className}`}>
         <h2 className="text-xl font-semibold mb-4 flex items-center">
@@ -98,13 +94,21 @@ export default function SentimentOverview({ className = '' }: SentimentOverviewP
 
   return (
     <div className={`bg-white rounded-lg shadow p-6 ${className}`}>
-      <h2 className="text-xl font-semibold mb-4 flex items-center">
-        <MessageSquareIcon className="w-5 h-5 mr-2 text-orange-500" />
-        Social Sentiment
-      </h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold flex items-center">
+          <MessageSquareIcon className="w-5 h-5 mr-2 text-orange-500" />
+          Social Sentiment
+        </h2>
+        <RealTimeStatus 
+          isConnected={isConnected}
+          lastUpdate={lastUpdate}
+          onRefresh={refetch}
+          className="text-xs"
+        />
+      </div>
       
       <div className="space-y-3">
-        {trendingPosts.map((post, index) => (
+        {trendingPosts && trendingPosts.map((post, index) => (
           <div key={index} className="border-b last:border-0 pb-3 last:pb-0">
             <div className="flex items-start justify-between">
               <div className="flex-1 pr-2">
@@ -141,7 +145,7 @@ export default function SentimentOverview({ className = '' }: SentimentOverviewP
       <div className="mt-4 pt-3 border-t">
         <div className="flex items-center justify-between text-xs text-gray-500">
           <span>Data from r/wallstreetbets</span>
-          <span>Updated every 15 min</span>
+          <span>Updated every 90s</span>
         </div>
       </div>
     </div>

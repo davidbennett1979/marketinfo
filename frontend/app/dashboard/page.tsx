@@ -3,8 +3,12 @@ import { createClient } from '@/lib/supabase/server'
 import MarketIndices from '@/components/dashboard/MarketIndices'
 import CryptoTracker from '@/components/dashboard/CryptoTracker'
 import NewsFeed from '@/components/dashboard/NewsFeed'
-import StockCard from '@/components/dashboard/StockCard'
 import SentimentOverview from '@/components/dashboard/SentimentOverview'
+import IPOTracker from '@/components/dashboard/IPOTracker'
+import EarningsCalendar from '@/components/dashboard/EarningsCalendar'
+import WatchlistManager from '@/components/dashboard/WatchlistManager'
+import TechnicalAnalysis from '@/components/dashboard/TechnicalAnalysis'
+import StockSentimentGrid from '@/components/dashboard/StockSentimentGrid'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -14,9 +18,6 @@ export default async function DashboardPage() {
   if (!user) {
     redirect('/login')
   }
-
-  // Popular stocks to display
-  const watchlistStocks = ['AAPL', 'MSFT', 'GOOGL', 'TSLA']
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -29,18 +30,20 @@ export default async function DashboardPage() {
             {/* Market Indices */}
             <MarketIndices />
 
-            {/* Watchlist Stocks */}
-            <div>
-              <h2 className="text-xl font-semibold mb-4">Watchlist</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {watchlistStocks.map((symbol) => (
-                  <StockCard key={symbol} symbol={symbol} />
-                ))}
-              </div>
-            </div>
+            {/* Watchlist Manager */}
+            <WatchlistManager />
 
             {/* Crypto Tracker */}
             <CryptoTracker />
+            
+            {/* Earnings Calendar */}
+            <EarningsCalendar />
+            
+            {/* Technical Analysis */}
+            <TechnicalAnalysis />
+            
+            {/* Stock Sentiment Grid */}
+            <StockSentimentGrid />
           </div>
 
           {/* Right Column - News & Sentiment */}
@@ -49,20 +52,7 @@ export default async function DashboardPage() {
             
             <SentimentOverview />
             
-            {/* Earnings Calendar */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4">Earnings Today</h2>
-              <div className="space-y-2">
-                <div className="text-sm">
-                  <div className="font-medium">AAPL - Apple Inc.</div>
-                  <div className="text-gray-500">After Close • Est. EPS: $1.95</div>
-                </div>
-                <div className="text-sm">
-                  <div className="font-medium">MSFT - Microsoft</div>
-                  <div className="text-gray-500">After Close • Est. EPS: $2.65</div>
-                </div>
-              </div>
-            </div>
+            <IPOTracker />
           </div>
         </div>
       </div>

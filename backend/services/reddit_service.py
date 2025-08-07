@@ -18,6 +18,7 @@ class RedditService:
         self.reddit = None
         self.sentiment_service = SentimentService()
         self.cache = CacheService()
+        self.credentials_logged = False  # Track if we've already logged the credentials warning
         
         # Financial subreddits to monitor
         self.subreddits = [

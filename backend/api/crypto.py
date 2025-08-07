@@ -6,6 +6,11 @@ from services.cache_service import CacheService
 router = APIRouter(prefix="/api/crypto", tags=["crypto"])
 cache = CacheService()
 
+@router.get("")
+async def get_crypto_list():
+    """Get list of top cryptocurrencies (default endpoint for /api/crypto)"""
+    return await get_top_cryptos(10)
+
 @router.get("/price/{coin_id}")
 async def get_crypto_price(coin_id: str):
     """Get current crypto price"""

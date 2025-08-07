@@ -1,12 +1,20 @@
 'use client'
 
-import { useTopCryptos } from '@/hooks/useMarketData'
-import { ArrowUpIcon, ArrowDownIcon } from 'lucide-react'
+import { ArrowUpIcon, ArrowDownIcon, DollarSignIcon } from 'lucide-react'
+import { useCryptoData } from '@/hooks/useRealTimeData'
+import RealTimeStatus from '@/components/common/RealTimeStatus'
 
 export default function CryptoTracker() {
-  const { cryptos, error, isLoading } = useTopCryptos(5)
+  const { 
+    data: cryptos, 
+    loading: isLoading, 
+    error, 
+    isConnected, 
+    lastUpdate, 
+    refetch 
+  } = useCryptoData()
 
-  if (isLoading) {
+  if (isLoading && (!cryptos || cryptos.length === 0)) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-xl font-semibold mb-4">Top Cryptocurrencies</h2>
@@ -30,9 +38,20 @@ export default function CryptoTracker() {
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-xl font-semibold mb-4">Top Cryptocurrencies</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold flex items-center">
+          <DollarSignIcon className="w-5 h-5 mr-2 text-orange-500" />
+          Top Cryptocurrencies
+        </h2>
+        <RealTimeStatus 
+          isConnected={isConnected}
+          lastUpdate={lastUpdate}
+          onRefresh={refetch}
+          className="text-xs"
+        />
+      </div>
       <div className="space-y-2">
-        {cryptos.map((crypto: any) => (
+        {cryptos && cryptos.map((crypto: any) => (
           <div key={crypto.symbol} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
             <div className="flex items-center">
               <div className="mr-3">

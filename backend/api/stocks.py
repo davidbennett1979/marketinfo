@@ -30,6 +30,25 @@ async def get_multiple_stocks(symbols: str):
     results = StockService.get_multiple_stocks(symbol_list)
     return results
 
+@router.get("/prices")
+async def get_stock_prices(symbols: str = ""):
+    """Get current prices for multiple stocks (comma-separated symbols)"""
+    if not symbols:
+        # Default symbols if none provided
+        symbols = "AAPL,MSFT,GOOGL,TSLA,AMZN,NVDA,META,NFLX"
+    
+    symbol_list = [s.strip().upper() for s in symbols.split(',') if s.strip()]
+    
+    if not symbol_list:
+        return {}
+    
+    try:
+        results = StockService.get_multiple_stocks(symbol_list)
+        return results
+    except Exception as e:
+        # Return empty dict to prevent frontend crashes
+        return {}
+
 @router.get("/indices")
 async def get_market_indices():
     """Get major market indices"""
