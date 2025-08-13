@@ -6,6 +6,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 from services.cache_service import CacheService
+from services.alpha_vantage_service import AlphaVantageService
 import time
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,7 @@ class IPOScraper:
     
     def __init__(self):
         self.cache = CacheService()
+        self.alpha_vantage = AlphaVantageService()
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -59,29 +61,31 @@ class IPOScraper:
             # Try multiple sources and combine results
             all_ipos = []
             
-            # Source 1: Try Alpha Vantage (free tier available)
+            # Source 1: Alpha Vantage API (primary source)
             try:
-                alpha_vantage_ipos = await self._fetch_alpha_vantage_ipos()
+                alpha_vantage_ipos = await self.alpha_vantage.get_ipo_calendar()
                 all_ipos.extend(alpha_vantage_ipos)
                 logger.info(f"Got {len(alpha_vantage_ipos)} IPOs from Alpha Vantage")
             except Exception as e:
                 logger.warning(f"Alpha Vantage IPO fetch failed: {str(e)}")
             
             # Source 2: MarketWatch (fallback)
-            try:
-                marketwatch_ipos = await self._scrape_marketwatch_ipos()
-                all_ipos.extend(marketwatch_ipos)
-                logger.info(f"Got {len(marketwatch_ipos)} IPOs from MarketWatch")
-            except Exception as e:
-                logger.warning(f"MarketWatch IPO scraping failed: {str(e)}")
+            if len(all_ipos) < 3:
+                try:
+                    marketwatch_ipos = await self._scrape_marketwatch_ipos()
+                    all_ipos.extend(marketwatch_ipos)
+                    logger.info(f"Got {len(marketwatch_ipos)} IPOs from MarketWatch")
+                except Exception as e:
+                    logger.warning(f"MarketWatch IPO scraping failed: {str(e)}")
             
-            # Source 3: Yahoo Finance (fallback)
-            try:
-                yahoo_ipos = await self._scrape_yahoo_ipos()
-                all_ipos.extend(yahoo_ipos)
-                logger.info(f"Got {len(yahoo_ipos)} IPOs from Yahoo Finance")
-            except Exception as e:
-                logger.warning(f"Yahoo Finance IPO scraping failed: {str(e)}")
+            # Source 3: Yahoo Finance (additional fallback)
+            if len(all_ipos) < 3:
+                try:
+                    yahoo_ipos = await self._scrape_yahoo_ipos()
+                    all_ipos.extend(yahoo_ipos)
+                    logger.info(f"Got {len(yahoo_ipos)} IPOs from Yahoo Finance")
+                except Exception as e:
+                    logger.warning(f"Yahoo Finance IPO scraping failed: {str(e)}")
             
             # If no real data, return mock data
             if not all_ipos:
@@ -111,16 +115,6 @@ class IPOScraper:
             logger.error(f"Error in get_upcoming_ipos: {str(e)}")
             return self._get_mock_ipo_data()
     
-    async def _fetch_alpha_vantage_ipos(self) -> List[Dict[str, Any]]:
-        """Fetch IPO data from Alpha Vantage API (free tier available)"""
-        try:
-            # Alpha Vantage doesn't have IPO calendar in free tier, 
-            # but we can try using FMP (Financial Modeling Prep) free tier instead
-            return await self._fetch_fmp_ipos()
-            
-        except Exception as e:
-            logger.error(f"Error fetching Alpha Vantage IPOs: {str(e)}")
-            return []
     
     async def _fetch_fmp_ipos(self) -> List[Dict[str, Any]]:
         """Try Financial Modeling Prep API for IPO calendar (has free tier)"""

@@ -1,31 +1,20 @@
-# Core Framework
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-dotenv==1.0.0
 pydantic==2.5.0
 pydantic-settings==2.1.0
-
-# API Clients
 httpx==0.24.1
+redis==5.0.1
+beautifulsoup4==4.12.2
+lxml==4.9.3
 requests==2.31.0
 yfinance==0.2.65
 praw==7.7.1
-
-# Data Processing
+feedparser==6.0.10
 pandas==2.1.4
 numpy==1.26.2
-beautifulsoup4==4.12.2
-lxml==4.9.3
-feedparser==6.0.10
-
-# Caching
-redis==5.0.1
-
-# Authentication & Database
+textblob==0.17.1
 supabase==2.3.0
 gotrue==2.8.1
-PyJWT==2.10.1
 python-multipart==0.0.6
-
-# Sentiment Analysis
-textblob==0.17.1
+PyJWT==2.8.0

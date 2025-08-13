@@ -9,6 +9,7 @@ import EarningsCalendar from '@/components/dashboard/EarningsCalendar'
 import WatchlistManager from '@/components/dashboard/WatchlistManager'
 import TechnicalAnalysis from '@/components/dashboard/TechnicalAnalysis'
 import StockSentimentGrid from '@/components/dashboard/StockSentimentGrid'
+import WSBTrendingStocks from '@/components/dashboard/WSBTrendingStocks'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -49,6 +50,8 @@ export default async function DashboardPage() {
           {/* Right Column - News & Sentiment */}
           <div className="space-y-6">
             <NewsFeed />
+            
+            <WSBTrendingStocks />
             
             <SentimentOverview />
             

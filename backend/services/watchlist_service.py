@@ -359,54 +359,157 @@ class WatchlistService:
             return None
     
     def _get_mock_watchlist_data(self) -> List[Dict[str, Any]]:
-        """Return mock watchlist data when database is unavailable."""
-        return [
-            {
-                'id': 'mock-1',
-                'symbol': 'AAPL',
-                'symbol_type': 'stock',
-                'name': 'Apple Inc.',
-                'current_price': 175.50,
-                'change_24h': 2.30,
-                'change_percentage_24h': 1.33,
-                'volume': 45000000,
-                'market_cap': 2750000000000,
-                'added_at': '2024-01-01T10:00:00Z'
-            },
-            {
-                'id': 'mock-2',
-                'symbol': 'MSFT',
-                'symbol_type': 'stock',
-                'name': 'Microsoft Corporation',
-                'current_price': 380.25,
-                'change_24h': -1.50,
-                'change_percentage_24h': -0.39,
-                'volume': 25000000,
-                'market_cap': 2800000000000,
-                'added_at': '2024-01-01T11:00:00Z'
-            },
-            {
-                'id': 'mock-3',
-                'symbol': 'BTC',
-                'symbol_type': 'crypto',
-                'name': 'Bitcoin',
-                'current_price': 45000.00,
-                'change_24h': 1200.00,
-                'change_percentage_24h': 2.74,
-                'volume': 15000000000,
-                'market_cap': 880000000000,
-                'added_at': '2024-01-01T12:00:00Z'
-            },
-            {
-                'id': 'mock-4',
-                'symbol': 'ETH',
-                'symbol_type': 'crypto',
-                'name': 'Ethereum',
-                'current_price': 2800.00,
-                'change_24h': 45.00,
-                'change_percentage_24h': 1.63,
-                'volume': 8000000000,
-                'market_cap': 336000000000,
-                'added_at': '2024-01-01T13:00:00Z'
-            }
+        """Return mock watchlist data with REAL market prices."""
+        # Define default watchlist items
+        mock_items = [
+            {'id': 'mock-1', 'symbol': 'AAPL', 'symbol_type': 'stock', 'added_at': '2024-01-01T10:00:00Z'},
+            {'id': 'mock-2', 'symbol': 'MSFT', 'symbol_type': 'stock', 'added_at': '2024-01-01T11:00:00Z'},
+            {'id': 'mock-3', 'symbol': 'BTC', 'symbol_type': 'crypto', 'added_at': '2024-01-01T12:00:00Z'},
+            {'id': 'mock-4', 'symbol': 'ETH', 'symbol_type': 'crypto', 'added_at': '2024-01-01T13:00:00Z'}
         ]
+        
+        # Get real market data for each item
+        enriched_items = []
+        for item in mock_items:
+            enriched_item = item.copy()
+            try:
+                # Get real data synchronously to avoid asyncio issues
+                if item['symbol_type'] == 'stock':
+                    market_data = self._get_stock_data_sync(item['symbol'])
+                else:
+                    market_data = self._get_crypto_data_sync(item['symbol'])
+                
+                if market_data:
+                    enriched_item.update(market_data)
+                else:
+                    raise Exception("No market data")
+            except Exception as e:
+                logger.info(f"Using static data for {item['symbol']}: {str(e)}")
+                # Use static fallback data
+                if item['symbol'] == 'AAPL':
+                    enriched_item.update({
+                        'name': 'Apple Inc.',
+                        'current_price': 175.50,
+                        'change_24h': 2.30,
+                        'change_percentage_24h': 1.33,
+                        'volume': 45000000,
+                        'market_cap': 2750000000000
+                    })
+                elif item['symbol'] == 'MSFT':
+                    enriched_item.update({
+                        'name': 'Microsoft Corporation',
+                        'current_price': 380.25,
+                        'change_24h': -1.50,
+                        'change_percentage_24h': -0.39,
+                        'volume': 25000000,
+                        'market_cap': 2800000000000
+                    })
+                elif item['symbol'] == 'BTC':
+                    enriched_item.update({
+                        'name': 'Bitcoin',
+                        'current_price': 45000.00,
+                        'change_24h': 1200.00,
+                        'change_percentage_24h': 2.74,
+                        'volume': 15000000000,
+                        'market_cap': 880000000000
+                    })
+                elif item['symbol'] == 'ETH':
+                    enriched_item.update({
+                        'name': 'Ethereum',
+                        'current_price': 2800.00,
+                        'change_24h': 45.00,
+                        'change_percentage_24h': 1.63,
+                        'volume': 8000000000,
+                        'market_cap': 336000000000
+                    })
+            
+            enriched_items.append(enriched_item)
+        
+        return enriched_items
+    
+    def _get_stock_data_sync(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """Get stock data synchronously using yfinance."""
+        try:
+            import yfinance as yf
+            
+            ticker = yf.Ticker(symbol)
+            hist = ticker.history(period="2d")
+            info = ticker.info
+            
+            if hist.empty:
+                return None
+            
+            current_price = float(hist['Close'].iloc[-1])
+            prev_price = float(hist['Close'].iloc[-2]) if len(hist) > 1 else current_price
+            change_24h = current_price - prev_price
+            change_percentage_24h = (change_24h / prev_price) * 100 if prev_price != 0 else 0
+            
+            return {
+                'name': info.get('longName', symbol),
+                'current_price': round(current_price, 2),
+                'change_24h': round(change_24h, 2),
+                'change_percentage_24h': round(change_percentage_24h, 2),
+                'volume': float(hist['Volume'].iloc[-1]) if not hist['Volume'].empty else None,
+                'market_cap': info.get('marketCap'),
+                'last_updated': datetime.now().isoformat()
+            }
+        except Exception as e:
+            logger.error(f"Error getting sync stock data for {symbol}: {str(e)}")
+            return None
+    
+    def _get_crypto_data_sync(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """Get crypto data synchronously using requests."""
+        try:
+            import requests
+            
+            # Map common symbols to CoinGecko IDs
+            symbol_map = {
+                'BTC': 'bitcoin',
+                'ETH': 'ethereum',
+                'BNB': 'binancecoin',
+                'XRP': 'ripple',
+                'ADA': 'cardano',
+                'DOGE': 'dogecoin',
+                'DOT': 'polkadot',
+                'UNI': 'uniswap',
+                'LTC': 'litecoin',
+                'LINK': 'chainlink'
+            }
+            
+            coin_id = symbol_map.get(symbol.upper(), symbol.lower())
+            
+            url = f"https://api.coingecko.com/api/v3/coins/markets"
+            params = {
+                'vs_currency': 'usd',
+                'ids': coin_id,
+                'order': 'market_cap_desc',
+                'sparkline': 'false'
+            }
+            
+            # Add API key if available
+            api_key = os.getenv('COINGECKO_API_KEY')
+            headers = {}
+            if api_key:
+                headers['x-cg-demo-api-key'] = api_key
+            
+            response = requests.get(url, params=params, headers=headers, timeout=5)
+            response.raise_for_status()
+            
+            data = response.json()
+            if not data:
+                return None
+            
+            coin_data = data[0]
+            
+            return {
+                'name': coin_data.get('name', symbol),
+                'current_price': coin_data.get('current_price'),
+                'change_24h': coin_data.get('price_change_24h'),
+                'change_percentage_24h': coin_data.get('price_change_percentage_24h'),
+                'volume': coin_data.get('total_volume'),
+                'market_cap': coin_data.get('market_cap'),
+                'last_updated': coin_data.get('last_updated', datetime.now().isoformat())
+            }
+        except Exception as e:
+            logger.error(f"Error getting sync crypto data for {symbol}: {str(e)}")
+            return None

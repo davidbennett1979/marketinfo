@@ -221,21 +221,169 @@ class RedditService:
     
     def _get_mock_trending_data(self) -> List[Dict[str, Any]]:
         """Return mock trending data when Reddit API is unavailable"""
-        return [
+        import random
+        from datetime import datetime, timedelta
+        
+        # Expanded list of realistic WSB posts
+        mock_posts = [
             {
-                'title': 'TSLA to the moon! 🚀',
-                'score': 2500,
-                'num_comments': 450,
-                'symbols': ['TSLA'],
-                'sentiment': {'sentiment_score': 0.6, 'classification': 'bullish'},
-                'mock_data': True
+                'title': 'GME YOLO Update – Still holding 💎🙌',
+                'score': 12500,
+                'num_comments': 2450,
+                'symbols': ['GME'],
+                'sentiment': {'sentiment_score': 0.85, 'classification': 'bullish'},
+                'upvotes': 12500,
+                'url': 'https://reddit.com/r/wallstreetbets/comments/example_gme',
+                'created_utc': (datetime.now() - timedelta(hours=2)).timestamp()
             },
             {
-                'title': 'AAPL earnings play discussion',
-                'score': 1800,
-                'num_comments': 320,
+                'title': 'NVDA puts printing hard 🐻📉 Market overreaction incoming',
+                'score': 8500,
+                'num_comments': 1320,
+                'symbols': ['NVDA'],
+                'sentiment': {'sentiment_score': -0.65, 'classification': 'bearish'},
+                'upvotes': 8500,
+                'url': 'https://reddit.com/r/wallstreetbets/comments/example_nvda',
+                'created_utc': (datetime.now() - timedelta(hours=4)).timestamp()
+            },
+            {
+                'title': 'TSLA $300 calls for next week. Papa Elon taking us to Mars 🚀',
+                'score': 7200,
+                'num_comments': 890,
+                'symbols': ['TSLA'],
+                'sentiment': {'sentiment_score': 0.75, 'classification': 'bullish'},
+                'upvotes': 7200,
+                'url': 'https://reddit.com/r/wallstreetbets/comments/example_tsla',
+                'created_utc': (datetime.now() - timedelta(hours=6)).timestamp()
+            },
+            {
+                'title': 'SPY crash incoming? VIX spiking, loaded up on puts',
+                'score': 6800,
+                'num_comments': 1450,
+                'symbols': ['SPY', 'VIX'],
+                'sentiment': {'sentiment_score': -0.45, 'classification': 'bearish'},
+                'upvotes': 6800,
+                'url': 'https://reddit.com/r/wallstreetbets/comments/example_spy',
+                'created_utc': (datetime.now() - timedelta(hours=3)).timestamp()
+            },
+            {
+                'title': 'AMC squeeze is back on the menu boys! 🍿🚀',
+                'score': 5500,
+                'num_comments': 980,
+                'symbols': ['AMC'],
+                'sentiment': {'sentiment_score': 0.80, 'classification': 'bullish'},
+                'upvotes': 5500,
+                'url': 'https://reddit.com/r/wallstreetbets/comments/example_amc',
+                'created_utc': (datetime.now() - timedelta(hours=8)).timestamp()
+            },
+            {
+                'title': 'AAPL DD: Why I\'m buying the dip before earnings',
+                'score': 4200,
+                'num_comments': 560,
                 'symbols': ['AAPL'],
-                'sentiment': {'sentiment_score': 0.2, 'classification': 'neutral'},
-                'mock_data': True
+                'sentiment': {'sentiment_score': 0.55, 'classification': 'bullish'},
+                'upvotes': 4200,
+                'url': 'https://reddit.com/r/wallstreetbets/comments/example_aapl',
+                'created_utc': (datetime.now() - timedelta(hours=10)).timestamp()
+            },
+            {
+                'title': 'META puts were the play. Zuck can\'t cuck the bears 🐻',
+                'score': 3800,
+                'num_comments': 420,
+                'symbols': ['META'],
+                'sentiment': {'sentiment_score': -0.60, 'classification': 'bearish'},
+                'upvotes': 3800,
+                'url': 'https://reddit.com/r/wallstreetbets/comments/example_meta',
+                'created_utc': (datetime.now() - timedelta(hours=12)).timestamp()
+            },
+            {
+                'title': 'COIN mooning with crypto! BTC to 100k 🌙',
+                'score': 3500,
+                'num_comments': 380,
+                'symbols': ['COIN', 'BTC'],
+                'sentiment': {'sentiment_score': 0.70, 'classification': 'bullish'},
+                'upvotes': 3500,
+                'url': 'https://reddit.com/r/wallstreetbets/comments/example_coin',
+                'created_utc': (datetime.now() - timedelta(hours=5)).timestamp()
+            },
+            {
+                'title': 'PLTR gang where you at? AI play of the decade 🤖',
+                'score': 3200,
+                'num_comments': 290,
+                'symbols': ['PLTR'],
+                'sentiment': {'sentiment_score': 0.65, 'classification': 'bullish'},
+                'upvotes': 3200,
+                'url': 'https://reddit.com/r/wallstreetbets/comments/example_pltr',
+                'created_utc': (datetime.now() - timedelta(hours=14)).timestamp()
+            },
+            {
+                'title': 'BBBY bankruptcy play - calls on volatility 📈',
+                'score': 2800,
+                'num_comments': 450,
+                'symbols': ['BBBY'],
+                'sentiment': {'sentiment_score': 0.40, 'classification': 'bullish'},
+                'upvotes': 2800,
+                'url': 'https://reddit.com/r/wallstreetbets/comments/example_bbby',
+                'created_utc': (datetime.now() - timedelta(hours=16)).timestamp()
+            },
+            {
+                'title': 'MSFT AI dominance continues. Buying every dip',
+                'score': 2500,
+                'num_comments': 180,
+                'symbols': ['MSFT'],
+                'sentiment': {'sentiment_score': 0.50, 'classification': 'bullish'},
+                'upvotes': 2500,
+                'url': 'https://reddit.com/r/wallstreetbets/comments/example_msft',
+                'created_utc': (datetime.now() - timedelta(hours=18)).timestamp()
+            },
+            {
+                'title': 'SOFI finally breaking out! Student loan play 🎓💰',
+                'score': 2200,
+                'num_comments': 340,
+                'symbols': ['SOFI'],
+                'sentiment': {'sentiment_score': 0.60, 'classification': 'bullish'},
+                'upvotes': 2200,
+                'url': 'https://reddit.com/r/wallstreetbets/comments/example_sofi',
+                'created_utc': (datetime.now() - timedelta(hours=20)).timestamp()
+            },
+            {
+                'title': 'F (Ford) EV play is real. Loading up on leaps',
+                'score': 1800,
+                'num_comments': 220,
+                'symbols': ['F'],
+                'sentiment': {'sentiment_score': 0.45, 'classification': 'bullish'},
+                'upvotes': 1800,
+                'url': 'https://reddit.com/r/wallstreetbets/comments/example_f',
+                'created_utc': (datetime.now() - timedelta(hours=22)).timestamp()
+            },
+            {
+                'title': 'RIVN dead cat bounce or reversal? DD inside',
+                'score': 1500,
+                'num_comments': 180,
+                'symbols': ['RIVN'],
+                'sentiment': {'sentiment_score': 0.10, 'classification': 'neutral'},
+                'upvotes': 1500,
+                'url': 'https://reddit.com/r/wallstreetbets/comments/example_rivn',
+                'created_utc': (datetime.now() - timedelta(hours=24)).timestamp()
+            },
+            {
+                'title': 'AMD vs NVDA - which semiconductor play is better?',
+                'score': 1200,
+                'num_comments': 150,
+                'symbols': ['AMD', 'NVDA'],
+                'sentiment': {'sentiment_score': 0.30, 'classification': 'bullish'},
+                'upvotes': 1200,
+                'url': 'https://reddit.com/r/wallstreetbets/comments/example_semi',
+                'created_utc': (datetime.now() - timedelta(hours=26)).timestamp()
             }
         ]
+        
+        # Shuffle and return a subset
+        random.shuffle(mock_posts)
+        selected_posts = mock_posts[:20]  # Return up to 20 posts
+        
+        # Add mock_data flag
+        for post in selected_posts:
+            post['mock_data'] = True
+        
+        return selected_posts

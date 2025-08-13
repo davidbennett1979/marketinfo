@@ -6,6 +6,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 from services.cache_service import CacheService
+from services.alpha_vantage_service import AlphaVantageService
 import time
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,7 @@ class EarningsScaper:
     
     def __init__(self):
         self.cache = CacheService()
+        self.alpha_vantage = AlphaVantageService()
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -59,21 +61,31 @@ class EarningsScaper:
             # Try multiple sources and combine results
             all_earnings = []
             
-            # Source 1: Yahoo Finance
+            # Source 1: Alpha Vantage API (primary source)
             try:
-                yahoo_earnings = await self._scrape_yahoo_earnings()
-                all_earnings.extend(yahoo_earnings)
-                logger.info(f"Got {len(yahoo_earnings)} earnings from Yahoo Finance")
+                alpha_vantage_earnings = await self.alpha_vantage.get_earnings_calendar()
+                all_earnings.extend(alpha_vantage_earnings)
+                logger.info(f"Got {len(alpha_vantage_earnings)} earnings from Alpha Vantage")
             except Exception as e:
-                logger.warning(f"Yahoo Finance earnings scraping failed: {str(e)}")
+                logger.warning(f"Alpha Vantage earnings fetch failed: {str(e)}")
             
-            # Source 2: MarketWatch
-            try:
-                marketwatch_earnings = await self._scrape_marketwatch_earnings()
-                all_earnings.extend(marketwatch_earnings)
-                logger.info(f"Got {len(marketwatch_earnings)} earnings from MarketWatch")
-            except Exception as e:
-                logger.warning(f"MarketWatch earnings scraping failed: {str(e)}")
+            # Source 2: Yahoo Finance (fallback)
+            if len(all_earnings) < 5:
+                try:
+                    yahoo_earnings = await self._scrape_yahoo_earnings()
+                    all_earnings.extend(yahoo_earnings)
+                    logger.info(f"Got {len(yahoo_earnings)} earnings from Yahoo Finance")
+                except Exception as e:
+                    logger.warning(f"Yahoo Finance earnings scraping failed: {str(e)}")
+            
+            # Source 3: MarketWatch (additional fallback)
+            if len(all_earnings) < 5:
+                try:
+                    marketwatch_earnings = await self._scrape_marketwatch_earnings()
+                    all_earnings.extend(marketwatch_earnings)
+                    logger.info(f"Got {len(marketwatch_earnings)} earnings from MarketWatch")
+                except Exception as e:
+                    logger.warning(f"MarketWatch earnings scraping failed: {str(e)}")
             
             # If no real data, return mock data
             if not all_earnings:

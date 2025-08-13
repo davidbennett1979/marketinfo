@@ -4,17 +4,30 @@ A real-time financial market dashboard that aggregates stock prices, cryptocurre
 
 ## Features
 
+### Core Features
 - 📈 **Real-time Market Data**: Track stocks and cryptocurrencies with live price updates
 - 📰 **Financial News Aggregation**: Latest market news from multiple RSS feeds
-- 💹 **Market Indices**: Monitor S&P 500, NASDAQ, DOW, and more
+- 💹 **Market Indices**: Monitor S&P 500, NASDAQ, DOW, VIX, Russell 2000, and more
+- 🔐 **User Authentication**: Secure login with Supabase
+- 💾 **Watchlist Management**: Save and track your favorite symbols with real-time prices
+
+### Advanced Features (Phase 4)
 - 🔍 **Advanced Sentiment Analysis**: 
-  - Multi-source sentiment (Reddit, StockTwits)
-  - Real-time social media trending
+  - Multi-source sentiment (Reddit r/wallstreetbets, StockTwits)
+  - Real-time social media trending with WSB hot stocks
   - Bullish/bearish indicators with confidence scores
   - Combined sentiment from multiple sources
-- 📊 **Interactive Charts**: Historical price data visualization
-- 🔐 **User Authentication**: Secure login with Supabase
-- 💾 **Watchlist**: Save and track your favorite symbols
+  - AI-powered rationale for sentiment classifications
+- 📊 **Technical Analysis**:
+  - RSI (Relative Strength Index)
+  - MACD (Moving Average Convergence Divergence)
+  - Moving Averages (SMA 20, 50)
+  - Bollinger Bands
+  - Buy/Sell/Hold signals
+- 🚀 **IPO Tracking**: Monitor upcoming and recent IPOs
+- 📅 **Earnings Calendar**: Track upcoming earnings reports with estimates
+- 💡 **Smart Tooltips**: 5 specialized tooltip types with rich information
+- 🔄 **Real-time Updates**: Intelligent polling with connection monitoring
 - 🤖 **AI-Powered Analysis**: TextBlob NLP with financial keyword detection
 
 ## Tech Stack
@@ -113,6 +126,7 @@ The application will be available at:
 - `GET /api/stocks/history/{symbol}` - Get historical data
 
 ### Cryptocurrency Data
+- `GET /api/crypto` - Get top 10 cryptocurrencies
 - `GET /api/crypto/price/{coin_id}` - Get crypto price
 - `GET /api/crypto/top/{limit}` - Get top cryptos by market cap
 - `GET /api/crypto/history/{coin_id}` - Get historical data
@@ -120,14 +134,26 @@ The application will be available at:
 ### Sentiment Analysis
 - `GET /api/sentiment/reddit/{subreddit}` - Get Reddit sentiment for a subreddit
 - `GET /api/sentiment/reddit/wsb/trending` - Get trending posts from r/wallstreetbets
+- `GET /api/sentiment/stocks/popular` - Get sentiment for popular stocks
+- `GET /api/sentiment/stocks/wsb-trending` - Get WSB's most talked about stocks
 - `GET /api/sentiment/stocktwits/{symbol}` - Get StockTwits sentiment
 - `GET /api/sentiment/combined/{symbol}` - Get combined sentiment from all sources
 - `POST /api/sentiment/analyze-text` - Analyze custom text sentiment
 
-### News & Data
+### Technical Analysis
+- `GET /api/technical-analysis` - Get technical indicators for popular stocks
+- `GET /api/technical-analysis/{symbol}` - Get technical indicators for a specific symbol
+
+### News & Calendar
 - `GET /api/news/latest` - Get latest financial news
-- `GET /api/news/earnings-calendar` - Get earnings calendar
-- `GET /api/news/short-interest` - Get high short interest stocks
+- `GET /api/earnings/upcoming` - Get upcoming earnings calendar
+- `GET /api/ipo/upcoming` - Get upcoming IPOs
+- `GET /api/ipo/recent` - Get recent IPOs
+
+### Watchlist
+- `GET /api/watchlist` - Get user's watchlist
+- `POST /api/watchlist` - Add symbol to watchlist
+- `DELETE /api/watchlist/{symbol}` - Remove symbol from watchlist
 
 ## Development
 
