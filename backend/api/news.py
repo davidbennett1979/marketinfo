@@ -44,36 +44,22 @@ async def get_earnings_calendar():
     if cached_data:
         return cached_data
     
-    # For MVP, return mock data (real scraping can be complex)
-    # In production, you'd use the EarningsCalendarScraper
-    mock_earnings = [
-        {
-            "symbol": "AAPL",
-            "company_name": "Apple Inc.",
-            "earnings_date": "2024-01-25",
-            "earnings_time": "after_close",
-            "estimated_eps": 1.95
-        },
-        {
-            "symbol": "MSFT",
-            "company_name": "Microsoft Corporation",
-            "earnings_date": "2024-01-24",
-            "earnings_time": "after_close",
-            "estimated_eps": 2.65
-        },
-        {
-            "symbol": "GOOGL",
-            "company_name": "Alphabet Inc.",
-            "earnings_date": "2024-01-30",
-            "earnings_time": "after_close",
-            "estimated_eps": 1.45
-        }
-    ]
-    
-    # Cache the results
-    cache.set(cache_key, mock_earnings, 'company_info')
-    
-    return mock_earnings
+    # Use the real earnings calendar scraper
+    try:
+        scraper = EarningsCalendarScraper()
+        earnings_data = scraper.scrape()
+        
+        # Cache the results if we got data
+        if earnings_data:
+            cache.set(cache_key, earnings_data, 'company_info')
+            return earnings_data
+        else:
+            # No earnings data available
+            return []
+            
+    except Exception as e:
+        logger.error(f"Error fetching earnings calendar: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch earnings calendar")
 
 @router.get("/short-interest")
 async def get_short_interest():
@@ -85,29 +71,20 @@ async def get_short_interest():
     if cached_data:
         return cached_data
     
-    # For MVP, return mock data
-    mock_short_data = [
-        {
-            "symbol": "GME",
-            "company_name": "GameStop Corp.",
-            "short_interest_percent": "23.5%",
-            "days_to_cover": 2.1
-        },
-        {
-            "symbol": "AMC",
-            "company_name": "AMC Entertainment",
-            "short_interest_percent": "19.8%",
-            "days_to_cover": 1.8
-        },
-        {
-            "symbol": "BBBY",
-            "company_name": "Bed Bath & Beyond",
-            "short_interest_percent": "45.2%",
-            "days_to_cover": 3.5
-        }
-    ]
-    
-    # Cache the results
-    cache.set(cache_key, mock_short_data, 'company_info')
-    
-    return mock_short_data
+    # Use the real short interest scraper
+    try:
+        from scrapers.news_scraper import ShortInterestScraper
+        scraper = ShortInterestScraper()
+        short_data = scraper.scrape()
+        
+        # Cache the results if we got data
+        if short_data:
+            cache.set(cache_key, short_data, 'company_info')
+            return short_data
+        else:
+            # No short interest data available
+            return []
+            
+    except Exception as e:
+        logger.error(f"Error fetching short interest data: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch short interest data")

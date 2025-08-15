@@ -30,6 +30,21 @@ class WatchlistService:
                 logger.error(f"Failed to initialize Supabase client: {str(e)}")
                 self.supabase = None
     
+    def _get_authenticated_supabase_client(self, user_jwt: str = None) -> Client:
+        """Get a Supabase client authenticated with the user's JWT token."""
+        if not self.supabase:
+            return None
+        
+        if user_jwt:
+            # Create a new client instance with the user's JWT token for RLS
+            authenticated_client = create_client(self.supabase_url, self.supabase_key)
+            authenticated_client.auth.set_session(user_jwt, None)
+            return authenticated_client
+        else:
+            # For development mode, we'll use service role to bypass RLS
+            # In production, this should always use the user's JWT
+            return self.supabase
+    
     async def get_user_watchlist(self, user_id: str) -> List[Dict[str, Any]]:
         """
         Get all symbols in user's watchlist with current market data.
@@ -42,13 +57,11 @@ class WatchlistService:
         """
         try:
             if not self.supabase:
-                logger.warning("Supabase not available, returning mock watchlist")
-                return self._get_mock_watchlist_data()
+                logger.warning("Supabase not available, returning empty watchlist")
+                return []
             
-            # Check if we're using a mock user ID and return mock data instead of hitting Supabase
-            if user_id == '12345678-1234-5678-9012-123456789012':
-                logger.info("Using mock watchlist data for development user")
-                return self._get_mock_watchlist_data()
+            # Development mode now uses real Supabase database with proper user isolation
+            # No special handling needed - all users get their own watchlists
             
             # Get watchlist items from Supabase
             result = self.supabase.table('watchlists') \
@@ -91,7 +104,7 @@ class WatchlistService:
             
         except Exception as e:
             logger.error(f"Error retrieving watchlist for user {user_id}: {str(e)}")
-            return self._get_mock_watchlist_data()
+            return []
     
     async def add_to_watchlist(self, user_id: str, symbol: str, symbol_type: str) -> Dict[str, Any]:
         """
@@ -106,12 +119,11 @@ class WatchlistService:
             Dictionary with success status and watchlist item
         """
         try:
-            if not self.supabase or user_id == '12345678-1234-5678-9012-123456789012':
-                # Mock behavior for development
+            if not self.supabase:
                 return {
-                    'success': True,
-                    'message': f'{symbol.upper()} added to watchlist (mock)',
-                    'data': {'symbol': symbol.upper(), 'symbol_type': symbol_type}
+                    'success': False,
+                    'message': 'Database not available',
+                    'data': None
                 }
             
             # Validate symbol type
@@ -170,11 +182,26 @@ class WatchlistService:
                 
         except Exception as e:
             logger.error(f"Error adding {symbol} to watchlist for user {user_id}: {str(e)}")
-            return {
-                'success': False,
-                'message': 'Database error occurred',
-                'data': None
-            }
+            # Provide more specific error information for debugging
+            error_msg = str(e)
+            if 'relation "public.watchlists" does not exist' in error_msg:
+                return {
+                    'success': False,
+                    'message': 'Watchlists table does not exist in database',
+                    'data': None
+                }
+            elif 'column' in error_msg and 'does not exist' in error_msg:
+                return {
+                    'success': False,
+                    'message': f'Database schema issue: {error_msg}',
+                    'data': None
+                }
+            else:
+                return {
+                    'success': False,
+                    'message': f'Database error: {error_msg}',
+                    'data': None
+                }
     
     async def remove_from_watchlist(self, user_id: str, symbol: str) -> Dict[str, Any]:
         """
@@ -188,11 +215,10 @@ class WatchlistService:
             Dictionary with success status
         """
         try:
-            if not self.supabase or user_id == '12345678-1234-5678-9012-123456789012':
-                # Mock behavior for development
+            if not self.supabase:
                 return {
-                    'success': True,
-                    'message': f'{symbol.upper()} removed from watchlist (mock)'
+                    'success': False,
+                    'message': 'Database not available'
                 }
             
             result = self.supabase.table('watchlists') \
@@ -223,8 +249,8 @@ class WatchlistService:
     async def get_watchlist_count(self, user_id: str) -> int:
         """Get the number of items in user's watchlist."""
         try:
-            if not self.supabase or user_id == '12345678-1234-5678-9012-123456789012':
-                return 4  # Mock count
+            if not self.supabase:
+                return 0
             
             result = self.supabase.table('watchlists') \
                 .select('id', count='exact') \
@@ -240,8 +266,8 @@ class WatchlistService:
     async def is_symbol_in_watchlist(self, user_id: str, symbol: str) -> bool:
         """Check if a symbol is in user's watchlist."""
         try:
-            if not self.supabase or user_id == '12345678-1234-5678-9012-123456789012':
-                return symbol.upper() in ['AAPL', 'MSFT', 'BTC', 'ETH']  # Mock data
+            if not self.supabase:
+                return False
             
             result = self.supabase.table('watchlists') \
                 .select('id') \
@@ -358,74 +384,6 @@ class WatchlistService:
             logger.error(f"Error getting crypto data for {symbol}: {str(e)}")
             return None
     
-    def _get_mock_watchlist_data(self) -> List[Dict[str, Any]]:
-        """Return mock watchlist data with REAL market prices."""
-        # Define default watchlist items
-        mock_items = [
-            {'id': 'mock-1', 'symbol': 'AAPL', 'symbol_type': 'stock', 'added_at': '2024-01-01T10:00:00Z'},
-            {'id': 'mock-2', 'symbol': 'MSFT', 'symbol_type': 'stock', 'added_at': '2024-01-01T11:00:00Z'},
-            {'id': 'mock-3', 'symbol': 'BTC', 'symbol_type': 'crypto', 'added_at': '2024-01-01T12:00:00Z'},
-            {'id': 'mock-4', 'symbol': 'ETH', 'symbol_type': 'crypto', 'added_at': '2024-01-01T13:00:00Z'}
-        ]
-        
-        # Get real market data for each item
-        enriched_items = []
-        for item in mock_items:
-            enriched_item = item.copy()
-            try:
-                # Get real data synchronously to avoid asyncio issues
-                if item['symbol_type'] == 'stock':
-                    market_data = self._get_stock_data_sync(item['symbol'])
-                else:
-                    market_data = self._get_crypto_data_sync(item['symbol'])
-                
-                if market_data:
-                    enriched_item.update(market_data)
-                else:
-                    raise Exception("No market data")
-            except Exception as e:
-                logger.info(f"Using static data for {item['symbol']}: {str(e)}")
-                # Use static fallback data
-                if item['symbol'] == 'AAPL':
-                    enriched_item.update({
-                        'name': 'Apple Inc.',
-                        'current_price': 175.50,
-                        'change_24h': 2.30,
-                        'change_percentage_24h': 1.33,
-                        'volume': 45000000,
-                        'market_cap': 2750000000000
-                    })
-                elif item['symbol'] == 'MSFT':
-                    enriched_item.update({
-                        'name': 'Microsoft Corporation',
-                        'current_price': 380.25,
-                        'change_24h': -1.50,
-                        'change_percentage_24h': -0.39,
-                        'volume': 25000000,
-                        'market_cap': 2800000000000
-                    })
-                elif item['symbol'] == 'BTC':
-                    enriched_item.update({
-                        'name': 'Bitcoin',
-                        'current_price': 45000.00,
-                        'change_24h': 1200.00,
-                        'change_percentage_24h': 2.74,
-                        'volume': 15000000000,
-                        'market_cap': 880000000000
-                    })
-                elif item['symbol'] == 'ETH':
-                    enriched_item.update({
-                        'name': 'Ethereum',
-                        'current_price': 2800.00,
-                        'change_24h': 45.00,
-                        'change_percentage_24h': 1.63,
-                        'volume': 8000000000,
-                        'market_cap': 336000000000
-                    })
-            
-            enriched_items.append(enriched_item)
-        
-        return enriched_items
     
     def _get_stock_data_sync(self, symbol: str) -> Optional[Dict[str, Any]]:
         """Get stock data synchronously using yfinance."""

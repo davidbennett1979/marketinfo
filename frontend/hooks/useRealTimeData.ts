@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { authenticatedFetch } from '@/lib/auth'
 
 interface RealTimeConfig {
   url: string
@@ -60,11 +61,7 @@ export function useRealTimeData<T>(config: RealTimeConfig): RealTimeState<T> & {
     try {
       setState(prev => ({ ...prev, loading: prev.data === null }))
       
-      const response = await fetch(url, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
+      const response = await authenticatedFetch(url)
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)

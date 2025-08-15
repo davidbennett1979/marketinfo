@@ -5,6 +5,7 @@ import { PlusIcon, XIcon, TrendingUpIcon, TrendingDownIcon, SearchIcon, StarIcon
 import { createClient } from '@/lib/supabase/client'
 import { useRealTimeData } from '@/hooks/useRealTimeData'
 import RealTimeStatus from '@/components/common/RealTimeStatus'
+import { authenticatedFetch } from '@/lib/auth'
 
 interface WatchlistItem {
   id: string
@@ -54,11 +55,8 @@ export default function WatchlistManager({ className = '' }: WatchlistManagerPro
     try {
       setAddingSymbol(true)
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/watchlist`, {
+      const response = await authenticatedFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/watchlist`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({
           symbol: newSymbol.toUpperCase(),
           symbol_type: newSymbolType
@@ -91,11 +89,8 @@ export default function WatchlistManager({ className = '' }: WatchlistManagerPro
 
   const removeFromWatchlist = async (symbol: string) => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/watchlist/${symbol}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+      const response = await authenticatedFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/watchlist/${symbol}`, {
+        method: 'DELETE'
       })
       
       if (!response.ok) {

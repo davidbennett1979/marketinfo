@@ -4,14 +4,49 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { User } from '@supabase/supabase-js'
+import { useState, useEffect } from 'react'
 
 interface NavigationProps {
   user: User | null
 }
 
-export default function Navigation({ user }: NavigationProps) {
+export default function Navigation({ user: initialUser }: NavigationProps) {
   const router = useRouter()
   const supabase = createClient()
+  const [user, setUser] = useState<User | null>(initialUser)
+
+  // Debug: Log user changes
+  useEffect(() => {
+    console.log('Navigation user state updated:', user?.email)
+  }, [user])
+
+  useEffect(() => {
+    // Get current user
+    const getCurrentUser = async () => {
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      setUser(currentUser)
+    }
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state change:', event, session?.user?.email)
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          setUser(session?.user ?? null)
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null)
+        }
+      }
+    )
+
+    // Get initial user state
+    getCurrentUser()
+
+    // Cleanup subscription on unmount
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [supabase])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()

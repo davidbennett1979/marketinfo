@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { CalendarIcon, ClockIcon, TrendingUpIcon, InfoIcon, RefreshCwIcon } from 'lucide-react'
 import SmartTooltip, { EarningsTooltip } from '@/components/common/SmartTooltip'
+import { authenticatedFetch } from '@/lib/auth'
 
 interface Earning {
   company: string
@@ -44,7 +45,7 @@ export default function EarningsCalendar({ className = '' }: EarningsCalendarPro
       setLoading(true)
       setError(null)
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/earnings/upcoming?days_ahead=5`)
+      const response = await authenticatedFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/earnings/upcoming?days_ahead=5`)
       if (!response.ok) throw new Error('Failed to fetch earnings data')
       
       const data = await response.json()

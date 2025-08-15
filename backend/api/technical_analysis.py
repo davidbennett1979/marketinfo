@@ -42,16 +42,16 @@ async def get_technical_analysis() -> List[Dict[str, Any]]:
                 continue
         
         if not results:
-            logger.warning("No technical analysis data available, using fallback data")
-            results = technical_service.get_mock_technical_data()
+            logger.warning("No technical analysis data available")
+            results = []
         
         logger.info(f"Retrieved technical analysis for {len(results)} symbols")
         return results
         
     except Exception as e:
         logger.error(f"Error fetching technical analysis: {str(e)}")
-        # Return fallback data instead of error to prevent frontend crashes
-        return technical_service.get_mock_technical_data()
+        # Return empty array instead of mock data
+        return []
 
 @router.get("/symbol/{symbol}")
 async def get_symbol_technical_analysis(symbol: str) -> Dict[str, Any]:

@@ -63,9 +63,33 @@ class IPOScraper:
             
             # Source 1: Alpha Vantage API (primary source)
             try:
-                alpha_vantage_ipos = await self.alpha_vantage.get_ipo_calendar()
-                all_ipos.extend(alpha_vantage_ipos)
+                alpha_vantage_ipos = await self.alpha_vantage.get_ipo_calendar(days_ahead)
+                
+                # Convert Alpha Vantage format to our standard format
+                for ipo in alpha_vantage_ipos:
+                    all_ipos.append({
+                        'company': ipo.get('company_name', ipo.get('company')),
+                        'symbol': ipo.get('symbol', 'TBD'),
+                        'date': ipo.get('expected_date', ipo.get('date')),
+                        'price_range': f"${ipo.get('price_range_low', 0):.2f}-${ipo.get('price_range_high', 0):.2f}" if ipo.get('price_range_low') else ipo.get('price_range', 'TBD'),
+                        'shares': f"{ipo.get('shares_offered', 0)/1000000:.1f}M" if ipo.get('shares_offered') else 'N/A',
+                        'market_cap': f"${ipo.get('dollar_value_offered', 0)/1000000000:.1f}B" if ipo.get('dollar_value_offered') else 'N/A',
+                        'lead_underwriter': ', '.join(ipo.get('lead_underwriters', [])) if ipo.get('lead_underwriters') else 'N/A',
+                        'exchange': ipo.get('exchange', 'N/A'),
+                        'sector': ipo.get('sector', 'N/A'),
+                        'industry': ipo.get('industry', 'N/A'),
+                        'status': ipo.get('status', 'Expected'),
+                        'source': 'Alpha Vantage'
+                    })
                 logger.info(f"Got {len(alpha_vantage_ipos)} IPOs from Alpha Vantage")
+                
+                # If we have good data from Alpha Vantage, we can skip other sources
+                if len(alpha_vantage_ipos) >= 3:
+                    # Cache and return early
+                    self.cache.set(cache_key, all_ipos, 'default', 21600)  # 6 hours
+                    logger.info(f"Returning {len(all_ipos)} IPOs from Alpha Vantage (cached)")
+                    return all_ipos
+                    
             except Exception as e:
                 logger.warning(f"Alpha Vantage IPO fetch failed: {str(e)}")
             
@@ -87,10 +111,10 @@ class IPOScraper:
                 except Exception as e:
                     logger.warning(f"Yahoo Finance IPO scraping failed: {str(e)}")
             
-            # If no real data, return mock data
+            # If no real data, return empty list
             if not all_ipos:
-                logger.warning("No IPO data from any source, returning mock data")
-                return self._get_mock_ipo_data()
+                logger.warning("No IPO data from any source")
+                return []
             
             # Deduplicate and filter by date
             unique_ipos = self._deduplicate_ipos(all_ipos)
@@ -113,7 +137,7 @@ class IPOScraper:
             
         except Exception as e:
             logger.error(f"Error in get_upcoming_ipos: {str(e)}")
-            return self._get_mock_ipo_data()
+            return []
     
     
     async def _fetch_fmp_ipos(self) -> List[Dict[str, Any]]:
@@ -130,51 +154,9 @@ class IPOScraper:
     async def _fetch_rss_ipo_data(self) -> List[Dict[str, Any]]:
         """Try to get IPO data from RSS feeds or simpler sources"""
         try:
-            # For now, let's enhance our mock data to be more realistic
-            # and include real companies that might go public soon
-            from datetime import datetime, timedelta
-            
-            realistic_ipos = [
-                {
-                    'company': 'Stripe Inc.',
-                    'symbol': 'TBD',
-                    'date': (datetime.now() + timedelta(days=15)).strftime('%Y-%m-%d'),
-                    'price_range': '$95-115',
-                    'shares': '50M',
-                    'market_cap': '$50B',
-                    'source': 'Market Research'
-                },
-                {
-                    'company': 'Discord Inc.',
-                    'symbol': 'TBD',
-                    'date': (datetime.now() + timedelta(days=8)).strftime('%Y-%m-%d'),
-                    'price_range': '$65-85',
-                    'shares': '30M',
-                    'market_cap': '$25B',
-                    'source': 'Market Research'
-                },
-                {
-                    'company': 'Canva Pty Ltd',
-                    'symbol': 'TBD',
-                    'date': (datetime.now() + timedelta(days=22)).strftime('%Y-%m-%d'),
-                    'price_range': '$45-60',
-                    'shares': '40M',
-                    'market_cap': '$15B',
-                    'source': 'Market Research'
-                },
-                {
-                    'company': 'Databricks Inc.',
-                    'symbol': 'TBD',
-                    'date': (datetime.now() + timedelta(days=12)).strftime('%Y-%m-%d'),
-                    'price_range': '$85-105',
-                    'shares': '25M',
-                    'market_cap': '$35B',
-                    'source': 'Market Research'
-                }
-            ]
-            
-            logger.info(f"Returning {len(realistic_ipos)} realistic IPO entries")
-            return realistic_ipos
+            # No RSS IPO feeds available - return empty array
+            # Real IPO data should come from API sources
+            return []
             
         except Exception as e:
             logger.error(f"Error fetching RSS IPO data: {str(e)}")
@@ -348,46 +330,6 @@ class IPOScraper:
             logger.warning(f"Could not parse date '{date_str}': {str(e)}")
             return None
     
-    def _get_mock_ipo_data(self) -> List[Dict[str, Any]]:
-        """Return mock IPO data when scraping fails"""
-        return [
-            {
-                'company': 'TechCorp Solutions',
-                'symbol': 'TECH',
-                'date': (datetime.now() + timedelta(days=3)).strftime('%Y-%m-%d'),
-                'price_range': '$18-22',
-                'shares': '10M',
-                'market_cap': '$200M',
-                'source': 'Mock Data'
-            },
-            {
-                'company': 'BioPharm Innovations',
-                'symbol': 'BIOS',
-                'date': (datetime.now() + timedelta(days=8)).strftime('%Y-%m-%d'),
-                'price_range': '$15-18',
-                'shares': '8M',
-                'market_cap': '$150M',
-                'source': 'Mock Data'
-            },
-            {
-                'company': 'Green Energy Systems',
-                'symbol': 'GREN',
-                'date': (datetime.now() + timedelta(days=12)).strftime('%Y-%m-%d'),
-                'price_range': '$12-16',
-                'shares': '12M',
-                'market_cap': '$180M',
-                'source': 'Mock Data'
-            },
-            {
-                'company': 'AI Analytics Corp',
-                'symbol': 'AILY',
-                'date': (datetime.now() + timedelta(days=18)).strftime('%Y-%m-%d'),
-                'price_range': '$20-25',
-                'shares': '6M',
-                'market_cap': '$140M',
-                'source': 'Mock Data'
-            }
-        ]
     
     async def get_recent_ipos(self, days_back: int = 30) -> List[Dict[str, Any]]:
         """Get recently completed IPOs with performance tracking"""
@@ -397,36 +339,27 @@ class IPOScraper:
             return cached_data
         
         try:
-            # For now, return mock recent IPO performance data
-            # In a full implementation, this would scrape recent IPO performance
-            recent_ipos = [
-                {
-                    'company': 'CloudTech Systems',
-                    'symbol': 'CLDT',
-                    'ipo_date': (datetime.now() - timedelta(days=5)).strftime('%Y-%m-%d'),
-                    'ipo_price': 20.00,
-                    'current_price': 26.50,
-                    'change_percent': 32.5,
-                    'first_day_close': 28.00,
-                    'market_cap': '$1.4B',
-                    'performance': 'strong'
-                },
-                {
-                    'company': 'Digital Payments Inc',
-                    'symbol': 'DPAY',
-                    'ipo_date': (datetime.now() - timedelta(days=12)).strftime('%Y-%m-%d'),
-                    'ipo_price': 16.00,
-                    'current_price': 14.25,
-                    'change_percent': -10.9,
-                    'first_day_close': 18.75,
-                    'market_cap': '$850M',
-                    'performance': 'weak'
-                }
-            ]
+            # Try to fetch real recent IPO data from Alpha Vantage if available
+            alpha_vantage = AlphaVantageService()
+            recent_ipos = await alpha_vantage.get_ipo_calendar(days_ahead=0)  # Get recent IPOs
             
-            # Cache for 6 hours
-            self.cache.set(cache_key, recent_ipos, 'default', 21600)
-            return recent_ipos
+            if recent_ipos:
+                # Filter for recent IPOs within days_back period
+                start_date = datetime.now() - timedelta(days=days_back)
+                filtered_ipos = []
+                
+                for ipo in recent_ipos:
+                    ipo_date = self._parse_date(ipo.get('date', ''))
+                    if ipo_date and ipo_date >= start_date.date():
+                        filtered_ipos.append(ipo)
+                
+                # Cache for 6 hours
+                if filtered_ipos:
+                    self.cache.set(cache_key, filtered_ipos, 'default', 21600)
+                    return filtered_ipos
+            
+            # No recent IPO data available
+            return []
             
         except Exception as e:
             logger.error(f"Error fetching recent IPOs: {str(e)}")

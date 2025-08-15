@@ -122,11 +122,13 @@ async def get_ipo_statistics() -> Dict[str, Any]:
                 outperforming = sum(1 for ipo in real_recent if ipo.get('change_percent', 0) > 0)
                 success_rate = (outperforming / len(real_recent)) * 100
             else:
-                avg_performance = 12.5  # Mock average
-                success_rate = 58.0  # Mock success rate
+                # No real data available - return null/zero values
+                avg_performance = 0.0
+                success_rate = 0.0
         else:
-            avg_performance = 12.5
-            success_rate = 58.0
+            # No IPO data available
+            avg_performance = 0.0
+            success_rate = 0.0
         
         stats = {
             'recent_ipo_count': len(recent_ipos),

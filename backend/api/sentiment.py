@@ -474,43 +474,11 @@ def get_fallback_stocks_sentiment(limit: int) -> Dict[str, Any]:
 
 def get_fallback_wsb_trending(limit: int) -> Dict[str, Any]:
     """Get fallback WSB trending stocks when API fails."""
-    # Common WSB favorites with realistic mention counts
-    trending_stocks = [
-        {'symbol': 'GME', 'mentions': 45, 'sentiment': 0.65, 'classification': 'bullish'},
-        {'symbol': 'TSLA', 'mentions': 38, 'sentiment': 0.25, 'classification': 'bullish'},
-        {'symbol': 'NVDA', 'mentions': 32, 'sentiment': 0.45, 'classification': 'bullish'},
-        {'symbol': 'SPY', 'mentions': 28, 'sentiment': -0.15, 'classification': 'bearish'},
-        {'symbol': 'AMC', 'mentions': 25, 'sentiment': 0.35, 'classification': 'bullish'},
-        {'symbol': 'AAPL', 'mentions': 22, 'sentiment': 0.10, 'classification': 'neutral'},
-        {'symbol': 'META', 'mentions': 18, 'sentiment': -0.25, 'classification': 'bearish'},
-        {'symbol': 'COIN', 'mentions': 15, 'sentiment': 0.55, 'classification': 'bullish'},
-        {'symbol': 'PLTR', 'mentions': 12, 'sentiment': 0.40, 'classification': 'bullish'},
-        {'symbol': 'BBBY', 'mentions': 10, 'sentiment': 0.75, 'classification': 'bullish'}
-    ]
-    
-    result_stocks = []
-    for stock_data in trending_stocks[:limit]:
-        result_stocks.append({
-            'symbol': stock_data['symbol'],
-            'mention_count': stock_data['mentions'],
-            'sentiment_score': stock_data['sentiment'],
-            'classification': stock_data['classification'],
-            'confidence': abs(stock_data['sentiment']),
-            'bullish_mentions': int(stock_data['mentions'] * 0.6) if stock_data['classification'] == 'bullish' else int(stock_data['mentions'] * 0.2),
-            'bearish_mentions': int(stock_data['mentions'] * 0.6) if stock_data['classification'] == 'bearish' else int(stock_data['mentions'] * 0.2),
-            'neutral_mentions': int(stock_data['mentions'] * 0.2),
-            'top_post': {
-                'title': f"${stock_data['symbol']} to the moon! 🚀" if stock_data['classification'] == 'bullish' else f"${stock_data['symbol']} puts printing 📉",
-                'upvotes': stock_data['mentions'] * 100,
-                'url': f"https://reddit.com/r/wallstreetbets/comments/example_{stock_data['symbol'].lower()}"
-            },
-            'rationale': f"{stock_data['symbol']} mentioned {stock_data['mentions']} times with {'strong' if abs(stock_data['sentiment']) > 0.3 else 'moderate'} {stock_data['classification']} sentiment",
-            'last_updated': datetime.now().isoformat()
-        })
-    
+    # No fallback data - return empty result when Reddit API fails
     return {
-        'trending_stocks': result_stocks,
-        'total_posts_analyzed': 100,
-        'source': 'r/wallstreetbets (cached)',
-        'last_updated': datetime.now().isoformat()
+        'trending_stocks': [],
+        'total_posts_analyzed': 0,
+        'source': 'r/wallstreetbets',
+        'last_updated': datetime.now().isoformat(),
+        'error': 'Reddit API not available'
     }

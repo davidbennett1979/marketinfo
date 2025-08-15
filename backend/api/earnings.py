@@ -156,7 +156,7 @@ async def get_earnings_statistics() -> Dict[str, Any]:
         after_market = sum(1 for e in upcoming_earnings if 'after' in e.get('time', '').lower())
         during_market = len(upcoming_earnings) - before_market - after_market
         
-        # Get unique sectors/companies (mock for now)
+        # Get unique companies count
         unique_companies = len(set(e.get('symbol', '') for e in upcoming_earnings))
         
         stats = {

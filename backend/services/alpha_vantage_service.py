@@ -59,18 +59,24 @@ class AlphaVantageService:
                 response = await client.get(self.base_url, params=params, timeout=30.0)
                 response.raise_for_status()
                 
-                data = response.json()
-                
-                # Check for API errors
-                if 'Error Message' in data:
-                    logger.error(f"Alpha Vantage API error: {data['Error Message']}")
-                    return {}
+                # Check if response is JSON or CSV
+                content_type = response.headers.get('content-type', '')
+                if 'application/json' in content_type:
+                    data = response.json()
                     
-                if 'Note' in data:
-                    logger.warning(f"Alpha Vantage API note: {data['Note']}")
-                    return {}
-                    
-                return data
+                    # Check for API errors
+                    if 'Error Message' in data:
+                        logger.error(f"Alpha Vantage API error: {data['Error Message']}")
+                        return {}
+                        
+                    if 'Note' in data:
+                        logger.warning(f"Alpha Vantage API note: {data['Note']}")
+                        return {}
+                        
+                    return data
+                else:
+                    # Return raw text for CSV responses
+                    return response.text
                 
         except Exception as e:
             logger.error(f"Error making Alpha Vantage API request: {str(e)}")
@@ -99,28 +105,29 @@ class AlphaVantageService:
             data = await self._make_request(params)
             
             if not data:
-                logger.warning("No earnings data from Alpha Vantage, using enhanced mock data")
-                return self._get_enhanced_mock_earnings()
+                logger.warning("No earnings data from Alpha Vantage")
+                return []
             
             # Parse CSV response (Alpha Vantage returns CSV for earnings calendar)
             earnings_list = []
             if isinstance(data, str):
                 lines = data.strip().split('\n')
                 if len(lines) > 1:
-                    headers = lines[0].split(',')
-                    for line in lines[1:]:
-                        values = line.split(',')
-                        if len(values) >= len(headers):
-                            earning = dict(zip(headers, values))
-                            
-                            # Transform to our standard format
+                    # Parse CSV header
+                    import csv
+                    from io import StringIO
+                    
+                    csv_reader = csv.DictReader(StringIO(data))
+                    for row in csv_reader:
+                        # Only include companies with actual estimates
+                        if row.get('estimate') and row.get('estimate').strip():
                             earnings_list.append({
-                                'company': earning.get('name', 'Unknown'),
-                                'symbol': earning.get('symbol', 'N/A'),
-                                'date': earning.get('reportDate', datetime.now().strftime('%Y-%m-%d')),
-                                'time': earning.get('time', 'TBD'),
-                                'eps_estimate': earning.get('estimate', 'N/A'),
-                                'eps_prior': earning.get('reported', 'N/A'),
+                                'company': row.get('name', 'Unknown'),
+                                'symbol': row.get('symbol', 'N/A'),
+                                'date': row.get('reportDate', datetime.now().strftime('%Y-%m-%d')),
+                                'time': 'TBD',  # Alpha Vantage doesn't provide time
+                                'eps_estimate': f"${row.get('estimate', 'N/A')}",
+                                'eps_prior': 'N/A',  # Not provided in the response
                                 'source': 'Alpha Vantage'
                             })
             
@@ -129,223 +136,80 @@ class AlphaVantageService:
                 self.cache.set(cache_key, earnings_list, 'default', 14400)
                 logger.info(f"Cached {len(earnings_list)} earnings from Alpha Vantage")
             else:
-                # Use enhanced mock data if API doesn't return results
-                earnings_list = self._get_enhanced_mock_earnings()
+                # No data available from API
+                earnings_list = []
             
             return earnings_list
             
         except Exception as e:
             logger.error(f"Error fetching earnings calendar: {str(e)}")
-            return self._get_enhanced_mock_earnings()
+            return []
     
-    async def get_ipo_calendar(self) -> List[Dict[str, Any]]:
+    async def get_ipo_calendar(self, days_ahead: int = 30) -> List[Dict[str, Any]]:
         """
-        Get IPO calendar data
-        
-        Note: Alpha Vantage doesn't provide IPO calendar in free tier,
-        so we'll use other sources or enhanced mock data
+        Get IPO calendar data from Alpha Vantage API.
         """
-        cache_key = "alpha_vantage:ipo_calendar"
+        cache_key = f"alpha_vantage:ipo_calendar:{days_ahead}"
         cached_data = self.cache.get(cache_key)
         if cached_data:
             logger.info(f"Returning cached IPO data ({len(cached_data)} items)")
             return cached_data
         
         try:
-            # Try to get IPO data from alternative sources
-            # For now, use Polygon.io free tier or enhanced mock data
-            ipo_list = await self._fetch_polygon_ipos()
+            # Alpha Vantage IPO calendar endpoint
+            params = {
+                'function': 'IPO_CALENDAR'
+            }
             
-            if not ipo_list:
-                ipo_list = self._get_enhanced_mock_ipos()
+            data = await self._make_request(params)
             
-            # Cache for 6 hours
-            self.cache.set(cache_key, ipo_list, 'default', 21600)
+            if not data:
+                logger.warning("No IPO data from Alpha Vantage API")
+                return []
+            
+            # Parse CSV response (Alpha Vantage returns CSV for IPO calendar)
+            ipo_list = []
+            if isinstance(data, str):
+                import csv
+                from io import StringIO
+                
+                csv_reader = csv.DictReader(StringIO(data))
+                for row in csv_reader:
+                    # Convert to our standard format
+                    ipo_list.append({
+                        'company': row.get('name', 'Unknown'),
+                        'symbol': row.get('symbol', 'TBD'),
+                        'date': row.get('ipoDate', datetime.now().strftime('%Y-%m-%d')),
+                        'price_range': f"${row.get('priceRangeLow', '0')}-${row.get('priceRangeHigh', '0')}",
+                        'shares': 'N/A',  # Not provided in response
+                        'market_cap': 'N/A',  # Not provided in response
+                        'exchange': row.get('exchange', 'N/A'),
+                        'currency': row.get('currency', 'USD'),
+                        'source': 'Alpha Vantage'
+                    })
+            
+            # If we got data, cache it for 12 hours
+            if ipo_list:
+                self.cache.set(cache_key, ipo_list, 'default', 43200)
+                logger.info(f"Cached {len(ipo_list)} IPOs from Alpha Vantage")
             
             return ipo_list
             
         except Exception as e:
-            logger.error(f"Error fetching IPO calendar: {str(e)}")
-            return self._get_enhanced_mock_ipos()
+            logger.error(f"Error generating IPO data: {str(e)}")
+            return []
     
     async def _fetch_polygon_ipos(self) -> List[Dict[str, Any]]:
         """Try to fetch IPO data from Polygon.io free tier"""
         try:
             # Polygon.io has a generous free tier
-            # For demo purposes, return enhanced mock data
+            # No IPO data available from Polygon free tier
             # In production, you would register for a free Polygon.io API key
             return []
             
         except Exception as e:
             logger.error(f"Error fetching Polygon IPOs: {str(e)}")
             return []
-    
-    def _get_enhanced_mock_earnings(self) -> List[Dict[str, Any]]:
-        """Return enhanced mock earnings data based on real companies"""
-        today = datetime.now()
-        
-        # Real companies with realistic earnings dates
-        earnings_data = [
-            # Today's earnings
-            {
-                'company': 'NVIDIA Corporation',
-                'symbol': 'NVDA',
-                'date': today.strftime('%Y-%m-%d'),
-                'time': 'After Market Close',
-                'eps_estimate': '$5.25',
-                'eps_prior': '$4.02',
-                'source': 'Market Data'
-            },
-            {
-                'company': 'Salesforce.com Inc.',
-                'symbol': 'CRM',
-                'date': today.strftime('%Y-%m-%d'),
-                'time': 'After Market Close',
-                'eps_estimate': '$2.35',
-                'eps_prior': '$1.98',
-                'source': 'Market Data'
-            },
-            # Tomorrow's earnings
-            {
-                'company': 'Broadcom Inc.',
-                'symbol': 'AVGO',
-                'date': (today + timedelta(days=1)).strftime('%Y-%m-%d'),
-                'time': 'After Market Close',
-                'eps_estimate': '$10.95',
-                'eps_prior': '$10.45',
-                'source': 'Market Data'
-            },
-            {
-                'company': 'Lululemon Athletica Inc.',
-                'symbol': 'LULU',
-                'date': (today + timedelta(days=1)).strftime('%Y-%m-%d'),
-                'time': 'Before Market Open',
-                'eps_estimate': '$2.68',
-                'eps_prior': '$2.00',
-                'source': 'Market Data'
-            },
-            # Next week earnings
-            {
-                'company': 'Oracle Corporation',
-                'symbol': 'ORCL',
-                'date': (today + timedelta(days=3)).strftime('%Y-%m-%d'),
-                'time': 'After Market Close',
-                'eps_estimate': '$1.38',
-                'eps_prior': '$1.19',
-                'source': 'Market Data'
-            },
-            {
-                'company': 'Adobe Inc.',
-                'symbol': 'ADBE',
-                'date': (today + timedelta(days=4)).strftime('%Y-%m-%d'),
-                'time': 'After Market Close',
-                'eps_estimate': '$4.65',
-                'eps_prior': '$4.27',
-                'source': 'Market Data'
-            },
-            {
-                'company': 'FedEx Corporation',
-                'symbol': 'FDX',
-                'date': (today + timedelta(days=5)).strftime('%Y-%m-%d'),
-                'time': 'After Market Close',
-                'eps_estimate': '$3.95',
-                'eps_prior': '$3.41',
-                'source': 'Market Data'
-            },
-            {
-                'company': 'General Mills Inc.',
-                'symbol': 'GIS',
-                'date': (today + timedelta(days=6)).strftime('%Y-%m-%d'),
-                'time': 'Before Market Open',
-                'eps_estimate': '$1.06',
-                'eps_prior': '$1.00',
-                'source': 'Market Data'
-            }
-        ]
-        
-        return earnings_data
-    
-    def _get_enhanced_mock_ipos(self) -> List[Dict[str, Any]]:
-        """Return enhanced mock IPO data based on realistic upcoming IPOs"""
-        base_date = datetime.now()
-        
-        # Realistic IPO candidates based on market rumors and filings
-        ipo_data = [
-            {
-                'company': 'Stripe Inc.',
-                'symbol': 'STRP',
-                'date': (base_date + timedelta(days=30)).strftime('%Y-%m-%d'),
-                'price_range': '$95-115',
-                'shares': '50M',
-                'market_cap': '$95B',
-                'lead_underwriter': 'Goldman Sachs',
-                'exchange': 'NYSE',
-                'sector': 'Financial Technology',
-                'source': 'Market Research'
-            },
-            {
-                'company': 'Discord Inc.',
-                'symbol': 'DISC',
-                'date': (base_date + timedelta(days=45)).strftime('%Y-%m-%d'),
-                'price_range': '$65-85',
-                'shares': '30M',
-                'market_cap': '$25B',
-                'lead_underwriter': 'Morgan Stanley',
-                'exchange': 'NASDAQ',
-                'sector': 'Communication Services',
-                'source': 'Market Research'
-            },
-            {
-                'company': 'Databricks Inc.',
-                'symbol': 'DBX',
-                'date': (base_date + timedelta(days=21)).strftime('%Y-%m-%d'),
-                'price_range': '$85-105',
-                'shares': '25M',
-                'market_cap': '$43B',
-                'lead_underwriter': 'JP Morgan',
-                'exchange': 'NASDAQ',
-                'sector': 'Cloud Computing',
-                'source': 'Market Research'
-            },
-            {
-                'company': 'Fanatics Inc.',
-                'symbol': 'FAN',
-                'date': (base_date + timedelta(days=60)).strftime('%Y-%m-%d'),
-                'price_range': '$45-55',
-                'shares': '40M',
-                'market_cap': '$31B',
-                'lead_underwriter': 'Bank of America',
-                'exchange': 'NYSE',
-                'sector': 'E-commerce/Sports',
-                'source': 'Market Research'
-            },
-            {
-                'company': 'Chime Financial Inc.',
-                'symbol': 'CHME',
-                'date': (base_date + timedelta(days=15)).strftime('%Y-%m-%d'),
-                'price_range': '$35-45',
-                'shares': '35M',
-                'market_cap': '$15B',
-                'lead_underwriter': 'Goldman Sachs',
-                'exchange': 'NYSE',
-                'sector': 'Digital Banking',
-                'source': 'Market Research'
-            },
-            {
-                'company': 'Instacart (Maplebear Inc.)',
-                'symbol': 'CART',
-                'date': (base_date + timedelta(days=7)).strftime('%Y-%m-%d'),
-                'price_range': '$28-32',
-                'shares': '22M',
-                'market_cap': '$10B',
-                'lead_underwriter': 'JP Morgan',
-                'exchange': 'NASDAQ',
-                'sector': 'Grocery Delivery',
-                'source': 'Market Research'
-            }
-        ]
-        
-        return ipo_data
     
     async def get_company_overview(self, symbol: str) -> Dict[str, Any]:
         """

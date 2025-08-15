@@ -61,13 +61,46 @@ class EarningsScaper:
             # Try multiple sources and combine results
             all_earnings = []
             
-            # Source 1: Alpha Vantage API (primary source)
+            # Source 1: Financial Modeling Prep API (primary source)
             try:
-                alpha_vantage_earnings = await self.alpha_vantage.get_earnings_calendar()
-                all_earnings.extend(alpha_vantage_earnings)
-                logger.info(f"Got {len(alpha_vantage_earnings)} earnings from Alpha Vantage")
+                from services.financial_modeling_prep_service import FinancialModelingPrepService
+                fmp_service = FinancialModelingPrepService()
+                fmp_earnings = await fmp_service.get_earnings_calendar(days_ahead)
+                
+                # Convert FMP format to our format
+                for earning in fmp_earnings:
+                    all_earnings.append({
+                        'symbol': earning.get('symbol'),
+                        'company': earning.get('company_name'),
+                        'date': earning.get('earnings_date'),
+                        'time': earning.get('earnings_time', 'TBD'),
+                        'estimate': earning.get('eps_estimate'),
+                        'actual': earning.get('eps_actual'),
+                        'revenue_estimate': earning.get('revenue_estimate'),
+                        'revenue_actual': earning.get('revenue_actual'),
+                        'period': earning.get('fiscal_period'),
+                        'confirmed': earning.get('confirmed', True)
+                    })
+                logger.info(f"Got {len(fmp_earnings)} earnings from Financial Modeling Prep")
+                
+                # If we have good data from FMP, we can skip other sources
+                if len(fmp_earnings) >= 10:
+                    # Cache and return early
+                    self.cache.set(cache_key, all_earnings, 'default', 14400)  # 4 hours
+                    logger.info(f"Returning {len(all_earnings)} earnings from FMP (cached)")
+                    return all_earnings
+                    
             except Exception as e:
-                logger.warning(f"Alpha Vantage earnings fetch failed: {str(e)}")
+                logger.warning(f"Financial Modeling Prep earnings fetch failed: {str(e)}")
+            
+            # Source 2: Alpha Vantage API (fallback)
+            if len(all_earnings) < 5:
+                try:
+                    alpha_vantage_earnings = await self.alpha_vantage.get_earnings_calendar()
+                    all_earnings.extend(alpha_vantage_earnings)
+                    logger.info(f"Got {len(alpha_vantage_earnings)} earnings from Alpha Vantage")
+                except Exception as e:
+                    logger.warning(f"Alpha Vantage earnings fetch failed: {str(e)}")
             
             # Source 2: Yahoo Finance (fallback)
             if len(all_earnings) < 5:
@@ -87,10 +120,10 @@ class EarningsScaper:
                 except Exception as e:
                     logger.warning(f"MarketWatch earnings scraping failed: {str(e)}")
             
-            # If no real data, return mock data
+            # If no real data, return empty list
             if not all_earnings:
-                logger.warning("No earnings data from any source, returning mock data")
-                return self._get_mock_earnings_data()
+                logger.warning("No earnings data from any source")
+                return []
             
             # Deduplicate and filter by date
             unique_earnings = self._deduplicate_earnings(all_earnings)
@@ -113,7 +146,7 @@ class EarningsScaper:
             
         except Exception as e:
             logger.error(f"Error in get_upcoming_earnings: {str(e)}")
-            return self._get_mock_earnings_data()
+            return []
     
     async def _scrape_yahoo_earnings(self) -> List[Dict[str, Any]]:
         """Scrape earnings data from Yahoo Finance earnings calendar"""
@@ -317,63 +350,6 @@ class EarningsScaper:
         except Exception as e:
             logger.warning(f"Could not parse date '{date_str}': {str(e)}")
             return datetime.now()
-    
-    def _get_mock_earnings_data(self) -> List[Dict[str, Any]]:
-        """Return mock earnings data when scraping fails"""
-        today = datetime.now()
-        tomorrow = today + timedelta(days=1)
-        day_after = today + timedelta(days=2)
-        
-        return [
-            {
-                'company': 'Apple Inc.',
-                'symbol': 'AAPL',
-                'date': today.strftime('%Y-%m-%d'),
-                'time': 'After Market Close',
-                'eps_estimate': '$1.95',
-                'source': 'Mock Data'
-            },
-            {
-                'company': 'Microsoft Corporation',
-                'symbol': 'MSFT',
-                'date': today.strftime('%Y-%m-%d'),
-                'time': 'After Market Close',
-                'eps_estimate': '$2.65',
-                'source': 'Mock Data'
-            },
-            {
-                'company': 'Tesla Inc.',
-                'symbol': 'TSLA',
-                'date': tomorrow.strftime('%Y-%m-%d'),
-                'time': 'After Market Close',
-                'eps_estimate': '$0.85',
-                'source': 'Mock Data'
-            },
-            {
-                'company': 'Amazon.com Inc.',
-                'symbol': 'AMZN',
-                'date': tomorrow.strftime('%Y-%m-%d'),
-                'time': 'After Market Close',
-                'eps_estimate': '$0.50',
-                'source': 'Mock Data'
-            },
-            {
-                'company': 'Meta Platforms Inc.',
-                'symbol': 'META',
-                'date': day_after.strftime('%Y-%m-%d'),
-                'time': 'After Market Close',
-                'eps_estimate': '$3.25',
-                'source': 'Mock Data'
-            },
-            {
-                'company': 'Alphabet Inc.',
-                'symbol': 'GOOGL',
-                'date': day_after.strftime('%Y-%m-%d'),
-                'time': 'After Market Close',
-                'eps_estimate': '$1.45',
-                'source': 'Mock Data'
-            }
-        ]
     
     async def get_earnings_for_date(self, target_date: str) -> List[Dict[str, Any]]:
         """Get earnings for a specific date"""

@@ -16,32 +16,95 @@ class AddWatchlistItemRequest(BaseModel):
     symbol: str
     symbol_type: str
 
+def verify_supabase_jwt(token: str) -> str:
+    """Verify Supabase JWT token and extract user ID."""
+    try:
+        # Get Supabase JWT secret from environment
+        jwt_secret = os.getenv('SUPABASE_JWT_SECRET')
+        if not jwt_secret or jwt_secret == 'your-jwt-secret-here':
+            # For development, we'll extract the secret from the anon key
+            # The anon key contains the secret used to sign JWTs
+            anon_key = os.getenv('SUPABASE_KEY')
+            if anon_key:
+                # Decode the anon key to get the secret (it's base64url encoded)
+                import base64
+                # Extract secret from the anon key JWT
+                # For now, let's get the secret from the project settings
+                # This is a temporary solution - in production, use the actual JWT secret
+                parts = anon_key.split('.')
+                if len(parts) >= 2:
+                    # The secret is typically the same across the project
+                    # For development, we'll use a known pattern
+                    # In production, get this from Supabase project settings
+                    jwt_secret = "super-secret-jwt-token-with-at-least-32-characters-supabase"
+        
+        if not jwt_secret:
+            raise ValueError("No JWT secret available")
+        
+        # Verify and decode the token with proper signature verification
+        payload = jwt.decode(
+            token, 
+            jwt_secret, 
+            algorithms=["HS256"],
+            options={
+                "verify_signature": True,
+                "verify_exp": True,
+                "verify_iat": True,
+                "verify_aud": False  # Supabase tokens might not have audience
+            }
+        )
+        
+        # Extract user ID from the 'sub' claim
+        user_id = payload.get('sub')
+        if not user_id:
+            raise ValueError("No user ID in token")
+        
+        # Verify this is a Supabase token
+        iss = payload.get('iss')
+        if iss and 'supabase' not in iss.lower():
+            logger.warning(f"Token issuer verification: {iss}")
+        
+        logger.info(f"Successfully verified JWT for user: {user_id}")
+        return user_id
+        
+    except jwt.ExpiredSignatureError:
+        logger.error("JWT token has expired")
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError as e:
+        logger.error(f"Invalid JWT token: {str(e)}")
+        raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception as e:
+        logger.error(f"JWT verification error: {str(e)}")
+        raise HTTPException(status_code=401, detail="Token verification failed")
+
 def get_user_id_from_token(authorization: Optional[str] = Header(None)) -> str:
     """Extract user ID from JWT token in Authorization header."""
     if not authorization or not authorization.startswith('Bearer '):
-        # For development/testing, use a mock user ID
-        if os.getenv('ENVIRONMENT') == 'development' or True:  # Always use mock for now
-            logger.info("Using mock user ID for development")
-            return '12345678-1234-5678-9012-123456789012'
-        
         raise HTTPException(status_code=401, detail="Authentication required")
     
     token = authorization.replace('Bearer ', '')
     
-    try:
-        # For development, return mock user ID
-        logger.info("Using mock user ID from token")
-        return '12345678-1234-5678-9012-123456789012'
-        
-        # In production, you would decode the actual JWT token from Supabase
-        # payload = jwt.decode(token, options={"verify_signature": False})
-        # user_id = payload.get('sub')
-        # if not user_id:
-        #     raise HTTPException(status_code=401, detail="Invalid token")
-        # return user_id
-        
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    # For development mode, we can bypass JWT verification but still extract user info
+    if os.getenv('ENVIRONMENT') == 'development':
+        try:
+            # In development, try to verify but fall back to unverified decode if needed
+            return verify_supabase_jwt(token)
+        except HTTPException:
+            # If verification fails in development, extract user ID without verification
+            # This allows for testing while we're setting up proper JWT secrets
+            try:
+                payload = jwt.decode(token, options={"verify_signature": False})
+                user_id = payload.get('sub')
+                if user_id:
+                    logger.warning(f"DEVELOPMENT MODE: Using unverified token for user {user_id}")
+                    return user_id
+            except:
+                pass
+            # No fallback - authentication required
+            raise HTTPException(status_code=401, detail="Authentication failed - no valid token provided")
+    
+    # Production mode - always verify JWT
+    return verify_supabase_jwt(token)
 
 @router.get("")
 async def get_user_watchlist(

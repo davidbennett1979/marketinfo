@@ -36,17 +36,17 @@ class StockTwitsScraper(BaseScraper):
             html = self.fetch_page(url)
             if not html:
                 logger.error(f"Failed to fetch StockTwits data for {symbol}")
-                return self._get_mock_data(symbol)
+                return self._get_empty_sentiment_data(symbol)
             
             try:
                 data = json.loads(html)
             except json.JSONDecodeError:
                 logger.error(f"Invalid JSON response from StockTwits for {symbol}")
-                return self._get_mock_data(symbol)
+                return self._get_empty_sentiment_data(symbol)
             
             if 'messages' not in data:
                 logger.error(f"No messages found in StockTwits response for {symbol}")
-                return self._get_mock_data(symbol)
+                return self._get_empty_sentiment_data(symbol)
             
             messages = data['messages']
             analyzed_messages = []
@@ -112,7 +112,7 @@ class StockTwitsScraper(BaseScraper):
             
         except Exception as e:
             logger.error(f"Error scraping StockTwits for {symbol}: {str(e)}")
-            return self._get_mock_data(symbol)
+            return self._get_empty_sentiment_data(symbol)
     
     def scrape_trending_symbols(self, limit: int = 20) -> List[Dict[str, Any]]:
         """
@@ -131,17 +131,17 @@ class StockTwitsScraper(BaseScraper):
             html = self.fetch_page(url)
             if not html:
                 logger.error("Failed to fetch StockTwits trending data")
-                return self._get_mock_trending_data()
+                return []
             
             try:
                 data = json.loads(html)
             except json.JSONDecodeError:
                 logger.error("Invalid JSON response from StockTwits trending")
-                return self._get_mock_trending_data()
+                return []
             
             if 'symbols' not in data:
                 logger.error("No symbols found in StockTwits trending response")
-                return self._get_mock_trending_data()
+                return []
             
             trending_symbols = []
             
@@ -161,53 +161,33 @@ class StockTwitsScraper(BaseScraper):
             
         except Exception as e:
             logger.error(f"Error scraping StockTwits trending: {str(e)}")
-            return self._get_mock_trending_data()
+            return []
     
     def scrape(self) -> List[Dict[str, Any]]:
         """Main scrape method - get trending symbols"""
         return self.scrape_trending_symbols()
     
-    def _get_mock_data(self, symbol: str) -> Dict[str, Any]:
-        """Return mock sentiment data when scraping fails"""
+    def _get_empty_sentiment_data(self, symbol: str) -> Dict[str, Any]:
+        """Return empty sentiment data when scraping fails"""
         return {
             'symbol': symbol.upper(),
             'source': 'stocktwits',
-            'messages_analyzed': 30,
+            'messages_analyzed': 0,
             'overall_sentiment': {
-                'average_sentiment': 0.12,
-                'bullish_ratio': 0.40,
-                'bearish_ratio': 0.30,
-                'neutral_ratio': 0.30,
-                'total_count': 30
+                'average_sentiment': 0,
+                'bullish_ratio': 0,
+                'bearish_ratio': 0,
+                'neutral_ratio': 0,
+                'total_count': 0
             },
             'stocktwits_sentiment': {
-                'bullish_count': 12,
-                'bearish_count': 9,
-                'bullish_ratio': 0.40,
-                'bearish_ratio': 0.30
+                'bullish_count': 0,
+                'bearish_count': 0,
+                'bullish_ratio': 0,
+                'bearish_ratio': 0
             },
-            'recent_messages': [
-                {
-                    'text': f'Bullish on ${symbol}! Great earnings expected.',
-                    'our_sentiment': {'sentiment_score': 0.5, 'classification': 'bullish'},
-                    'user': {'username': 'trader123', 'followers': 1500}
-                },
-                {
-                    'text': f'${symbol} looking weak, might be a sell.',
-                    'our_sentiment': {'sentiment_score': -0.3, 'classification': 'bearish'},
-                    'user': {'username': 'investor456', 'followers': 800}
-                }
-            ],
+            'recent_messages': [],
             'timestamp': datetime.now().isoformat(),
-            'mock_data': True
+            'error': 'Failed to fetch StockTwits data'
         }
     
-    def _get_mock_trending_data(self) -> List[Dict[str, Any]]:
-        """Return mock trending data when scraping fails"""
-        return [
-            {'symbol': 'TSLA', 'title': 'Tesla Inc', 'exchange': 'NASDAQ', 'watchlist_count': 15000},
-            {'symbol': 'AAPL', 'title': 'Apple Inc', 'exchange': 'NASDAQ', 'watchlist_count': 12000},
-            {'symbol': 'NVDA', 'title': 'NVIDIA Corp', 'exchange': 'NASDAQ', 'watchlist_count': 10000},
-            {'symbol': 'MSFT', 'title': 'Microsoft Corp', 'exchange': 'NASDAQ', 'watchlist_count': 9500},
-            {'symbol': 'AMZN', 'title': 'Amazon.com Inc', 'exchange': 'NASDAQ', 'watchlist_count': 8000}
-        ]

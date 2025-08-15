@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { CalendarIcon, TrendingUpIcon, TrendingDownIcon, BuildingIcon, DollarSignIcon, InfoIcon } from 'lucide-react'
+import { authenticatedFetch } from '@/lib/auth'
 
 interface IPO {
   company: string
@@ -60,8 +61,8 @@ export default function IPOTracker({ className = '' }: IPOTrackerProps) {
       console.log('🧪 Fetching IPO data from:', `${process.env.NEXT_PUBLIC_API_URL}/api/ipo/upcoming`)
       
       const [upcomingResponse, recentResponse] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/ipo/upcoming?days_ahead=30`),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/ipo/recent?days_back=30`)
+        authenticatedFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/ipo/upcoming?days_ahead=30`),
+        authenticatedFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/ipo/recent?days_back=30`)
       ])
       
       console.log('📊 Response status:', upcomingResponse.status, recentResponse.status)

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { TrendingUpIcon, TrendingDownIcon, MinusIcon } from 'lucide-react'
+import { authenticatedFetch } from '@/lib/auth'
 
 interface SentimentData {
   score: number
@@ -31,7 +32,7 @@ export default function SentimentIndicator({ symbol, className = '' }: Sentiment
       setLoading(true)
       setError(null)
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/sentiment/combined/${symbol}`)
+      const response = await authenticatedFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/sentiment/combined/${symbol}`)
       if (!response.ok) throw new Error('Failed to fetch sentiment')
       
       const data = await response.json()

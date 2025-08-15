@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { TrendingUpIcon, TrendingDownIcon, MinusIcon, ActivityIcon, BarChartIcon } from 'lucide-react'
 import { TechnicalTooltip } from '@/components/common/SmartTooltip'
+import { authenticatedFetch } from '@/lib/auth'
 
 interface TechnicalIndicator {
   symbol: string
@@ -53,11 +54,7 @@ export default function TechnicalAnalysis({ className = '' }: TechnicalAnalysisP
       
       console.log('🔍 Fetching technical analysis...')
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/technical-analysis`, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
+      const response = await authenticatedFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/technical-analysis`)
       
       if (!response.ok) {
         throw new Error('Failed to fetch technical analysis')
