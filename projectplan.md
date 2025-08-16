@@ -12,7 +12,11 @@ A real-time web-based dashboard that aggregates financial data from multiple sou
 - ✅ **Phase 4.2: Complete Mock Data Elimination** - Complete (100%) ✅
 - ✅ **Phase 4.3: Multi-User Data Isolation** - Complete (100%) ✅
 - ✅ **Phase 4.4: Code Housekeeping & Optimization** - Complete (100%) ✅
-- 📋 **Phase 5: Polish & Deploy** - Ready to Start
+- ✅ **Phase 4.5: AI Chat Integration** - Complete (100%) ✅
+- 📋 **Phase 4.6: Advanced Search & Historical Charts** - Moved to Phase 4.8
+- ✅ **Phase 4.7: Code Quality & Performance Improvements** - Complete (100%) ✅
+- 📋 **Phase 4.8: Search & Historical Charts Implementation** - Ready to Start
+- 📋 **Phase 5: Production Deployment & Polish** - Pending
 
 ## MVP Features
 
@@ -31,6 +35,7 @@ A real-time web-based dashboard that aggregates financial data from multiple sou
 - **Authentication**: Full JWT-based auth with proper token verification and multi-user support ✅
 - **Database Persistence**: Real Supabase integration with Row Level Security ✅
 - **100% Real Data**: Complete elimination of mock data across all endpoints ✅
+- **AI Chat Assistant**: Hybrid Perplexity + Claude integration with smart query routing ✅
 
 ### 2. Not Yet Implemented ❌
 - **Short Interest Data**: Web scraping for short positions
@@ -41,7 +46,17 @@ A real-time web-based dashboard that aggregates financial data from multiple sou
 - **Historical Charts**: Interactive price history visualization
 - **Export Features**: Data export functionality
 
-### 2. Data Sources & APIs
+### 2. Implemented AI Features ✅
+- **AI Chat Assistant**: Hybrid Perplexity + Claude integration with smart routing
+  - Real-time market queries handled by Perplexity with web search
+  - Complex analysis handled by Claude (Anthropic)
+  - Context-aware responses using user's watchlist
+  - Source citations for real-time information
+  - Actionable insights with quick action buttons
+  - Rate limited to 20 queries/hour per user
+  - Redis caching for cost optimization
+
+### 3. Data Sources & APIs
 
 #### Free Financial Data Sources
 - **yfinance** (Python library - completely free)
@@ -198,12 +213,235 @@ A real-time web-based dashboard that aggregates financial data from multiple sou
 - [x] Organize project structure for maintainability ✅
 - [x] Update project plan to reflect current accurate status ✅
 
-### Phase 5: Polish & Deploy (Week 9-10)
+### Phase 4.5: AI Chat Integration - Perplexity + Claude Hybrid - ✅ **COMPLETED**
+
+#### Architecture: Real-Time Market Intelligence
+- **Primary**: Perplexity API for real-time queries ("why did X jump today")
+- **Fallback**: Claude API for complex analysis ("analyze my portfolio strategy")
+- **No Mock Data**: 100% real API integration from day one
+
+#### Implemented Features:
+1. **Backend API Integration**
+   - [x] Set up Perplexity API client with proper authentication ✅
+   - [x] Set up Anthropic Claude API client (non-streaming for simplicity) ✅
+   - [x] Create intelligent query router (detect real-time vs analysis needs) ✅
+   - [x] Implement cost management with rate limiting (20 queries/hour) ✅
+   - [x] Add response caching with Redis (5-min TTL) ✅
+   - [x] Create context injection system (user's watchlist, current view) ✅
+   - [x] Build error handling with graceful degradation ✅
+   - [x] Add source citation formatter for Perplexity responses ✅
+
+2. **Frontend Chat Interface**
+   - [x] Build collapsible chat bar component (below header) ✅
+   - [x] Implement response display with React Markdown ✅
+   - [x] Create source citation renderer with clickable links ✅
+   - [x] Add loading states and error handling UI ✅
+   - [x] Build action buttons ("Add to Watchlist", "View Technical") ✅
+   - [x] Implement keyboard shortcut (Cmd/Ctrl + K) ✅
+   - [x] Add session message history ✅
+   - [x] Create smart query suggestions based on context ✅
+
+3. **Query Processing Pipeline**
+   - [x] Detect query intent (real-time news vs analysis) ✅
+   - [x] Extract mentioned symbols and validate ✅
+   - [x] Inject relevant context (watchlist data) ✅
+   - [x] Format responses with actionable insights ✅
+   - [x] Handle single-turn queries effectively ✅
+
+4. **Security & Performance**
+   - [x] Add request authentication (require user login) ✅
+   - [x] Set up usage tracking per user ✅
+   - [x] Configure response timeouts (30s max) ✅
+   - [x] Implement rate limiting (20 requests/hour) ✅
+
+5. **Testing & Validation**
+   - [x] Test real-time queries ("Why did AMD stock jump today?") ✅
+   - [x] Test analysis queries ("Compare AMD and NVDA") ✅
+   - [x] Verify source citations are accurate ✅
+   - [x] Test error scenarios (API failures) ✅
+   - [x] Validate rate limiting works ✅
+
+#### Technical Implementation Details:
+- **Models Used**: 
+  - Perplexity: `sonar` (latest model for web search)
+  - Claude: `claude-3-5-sonnet-20241022` (Anthropic's latest)
+- **Smart Routing Logic**:
+  - Real-time keywords: "today", "now", "current", "latest", "why did", "news"
+  - Analysis keywords: "analyze", "compare", "strategy", "portfolio", "technical analysis"
+- **Integration Points**:
+  - AI service integrated with existing JWT auth
+  - Context aware of user's watchlist and current view
+  - Actions can add stocks to watchlist or navigate to technical analysis
+
+### Phase 4.6: Advanced Search & Historical Charts (MOVED to Phase 4.8)
+- Originally postponed to focus on core improvements
+- Now scheduled as Phase 4.8 before production deployment
+
+### Phase 4.7: Code Quality & Performance Improvements - ✅ **COMPLETED**
+
+#### Objective: Address housekeeping items and optimize performance before production
+
+#### Completed Tasks:
+1. **Complete Mock Data Elimination**
+   - [x] Remove remaining mock data generation in `api/sentiment.py` ✅
+   - [x] Remove `create_fallback_sentiment()` function ✅
+   - [x] Remove `get_fallback_stocks_sentiment()` function ✅
+   - [x] Replace with empty arrays on API failures ✅
+
+2. **AI Service Documentation & Configuration**
+   - [x] Document AI models in README.md (Claude and Perplexity) ✅
+   - [x] Add AI models to Tech Stack section ✅
+   - [x] Document AI endpoints in API section ✅
+   - [x] Make AI models configurable via environment variables ✅
+   - [x] Add `CLAUDE_MODEL` and `PERPLEXITY_MODEL` to .env ✅
+
+3. **Caching & Performance Optimization**
+   - [x] Implement request coalescing to prevent duplicate API calls ✅
+   - [x] Add cache hit rate metrics and logging ✅
+   - [x] Create cache statistics endpoint `/api/system/cache/stats` ✅
+   - [ ] Add cache stampede protection with Redis locks (deferred to Phase 5)
+   - [ ] Implement cache warming for popular stocks (deferred to Phase 5)
+   - [ ] Consider progressive cache TTLs for stable data (deferred to Phase 5)
+
+4. **API Efficiency Improvements**
+   - [x] Add request deduplication within cache windows via coalescing ✅
+   - [ ] Implement queue system for batch API requests (deferred to Phase 5)
+   - [ ] Add circuit breaker pattern for failing APIs (deferred to Phase 5)
+   - [ ] Optimize rate limiting strategies (deferred to Phase 5)
+
+5. **Code Cleanup**
+   - [x] Removed all remaining mock data generation ✅
+   - [x] Updated error handling to return empty data ✅
+   - [x] Added proper imports and type hints ✅
+   - [x] Created system health check endpoint ✅
+
+#### Key Achievements:
+- **Request Coalescing**: Created `RequestCoalescer` service to prevent duplicate API calls
+- **Cache Metrics**: Added cache statistics tracking with hit rate calculation
+- **AI Configuration**: Made AI models configurable via environment variables
+- **System Monitoring**: Added `/api/system/health` and `/api/system/cache/stats` endpoints
+- **100% Real Data**: Completely eliminated all mock data generation
+
+### Phase 4.8: Search & Historical Charts Implementation (3-4 days)
+
+#### Objective: Add essential user experience features before production
+
+#### Implementation Tasks:
+1. **Search Functionality**
+   - [ ] Create search bar component in navigation
+   - [ ] Implement symbol search API endpoint
+   - [ ] Add autocomplete with fuzzy matching
+   - [ ] Include company names in search results
+   - [ ] Cache popular search queries
+   - [ ] Add keyboard navigation (arrow keys, enter)
+   - [ ] Show search history for user
+   - [ ] Quick actions from search results (add to watchlist, view chart)
+
+2. **Historical Price Charts**
+   - [ ] Integrate charting library (Chart.js or Recharts)
+   - [ ] Create reusable chart component
+   - [ ] Add time period selectors (1D, 1W, 1M, 3M, 6M, 1Y, 5Y)
+   - [ ] Implement zoom and pan functionality
+   - [ ] Add volume bars below price chart
+   - [ ] Show price/volume on hover
+   - [ ] Add technical indicators overlay option
+   - [ ] Cache historical data appropriately
+
+3. **Integration Points**
+   - [ ] Add charts to stock detail views
+   - [ ] Embed mini charts in watchlist cards
+   - [ ] Add chart view to technical analysis page
+   - [ ] Create dedicated chart page with full features
+   - [ ] Integrate search with all existing components
+
+4. **Performance Considerations**
+   - [ ] Lazy load chart library
+   - [ ] Implement virtual scrolling for search results
+   - [ ] Optimize historical data queries
+   - [ ] Add loading skeletons for charts
+
+5. **Testing**
+   - [ ] Test search with various queries
+   - [ ] Verify chart rendering on different screen sizes
+   - [ ] Test chart performance with large datasets
+   - [ ] Ensure search doesn't impact page performance
+
+### Phase 5: Production Deployment & Polish (Week 9-10)
+
+#### Pre-Production Checklist:
+1. **Environment Configuration**
+   - [ ] Set `ENVIRONMENT=production` in production .env
+   - [ ] Ensure proper JWT secrets (not development defaults)
+   - [ ] Review all API keys for production readiness
+   - [ ] Configure production Redis instance
+   - [ ] Set up production database with proper backups
+
+2. **Security Hardening**
+   - [ ] Implement global rate limiting middleware (e.g., slowapi)
+   - [ ] Add per-IP rate limiting for anonymous requests
+   - [ ] Review and restrict CORS origins to production domain
+   - [ ] Enable HTTPS-only cookies
+   - [ ] Add request validation middleware
+   - [ ] Implement API key rotation strategy
+
+3. **Performance & Reliability**
+   - [ ] Add circuit breakers for all external APIs
+   - [ ] Implement cache stampede protection with Redis locks
+   - [ ] Add cache warming for popular stocks (pre-fetch top 20 stocks)
+   - [ ] Implement queue system for batch API requests
+   - [ ] Optimize rate limiting strategies with sliding windows
+   - [ ] Implement health check endpoints (already have /api/system/health)
+   - [ ] Set up proper logging with environment-based levels
+   - [ ] Configure production-appropriate cache TTLs
+   - [ ] Add connection pooling for database and Redis
+   - [ ] Implement graceful shutdown handling
+   - [ ] Add request timeout middleware
+   - [ ] Implement retry logic with exponential backoff
+
+4. **Monitoring & Observability**
+   - [ ] Set up application monitoring (e.g., Sentry)
+   - [ ] Configure structured logging
+   - [ ] Add performance metrics collection
+   - [ ] Set up uptime monitoring
+   - [ ] Create alerting rules for critical issues
+   - [ ] Add distributed tracing for API calls
+
+5. **Deployment Infrastructure**
+   - [ ] Set up CI/CD pipeline
+   - [ ] Configure auto-scaling rules
+   - [ ] Set up CDN for static assets
+   - [ ] Configure backup strategies
+   - [ ] Create deployment documentation
+   - [ ] Set up staging environment
+
+6. **Containerization & Orchestration**
+   - [ ] Create Dockerfile for frontend (Next.js)
+   - [ ] Create Dockerfile for backend (FastAPI)
+   - [ ] Create docker-compose.yml for full stack
+   - [ ] Configure environment variables management
+   - [ ] Set up volume mounts for development
+   - [ ] Create docker-compose.prod.yml for production
+   - [ ] Document Docker setup and commands
+   - [ ] Test containerized deployment
+   - [ ] Create health checks for containers
+   - [ ] Optimize image sizes (multi-stage builds)
+
+7. **Post-Deployment**
+   - [ ] Load testing with expected user volume
+   - [ ] Security audit and penetration testing
+   - [ ] Performance profiling and optimization
+   - [ ] User acceptance testing
+   - [ ] Create operational runbooks
+   - [ ] Set up automated backups
+   - [ ] Create disaster recovery plan
+   - [ ] Document rollback procedures
+
+#### Original Phase 5 Items:
 - [ ] UI/UX improvements
-- [ ] Performance optimization
-- [ ] Error handling and logging
-- [ ] Deploy to production
-- [ ] Set up monitoring
+- [ ] Performance optimization (expanded above)
+- [ ] Error handling and logging (expanded above)
+- [ ] Deploy to production (expanded above)
+- [ ] Set up monitoring (expanded above)
 
 ## Web Scraping Strategy
 

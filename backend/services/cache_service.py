@@ -1,9 +1,10 @@
 import redis
 import json
-from typing import Optional, Any
+from typing import Optional, Any, Callable, Dict
 from datetime import timedelta
 import logging
 import os
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -107,3 +108,79 @@ class CacheService:
     def set_news(self, category: str, data: list) -> bool:
         """Cache news articles"""
         return self.set(f"news:{category}", data, 'news')
+    
+    async def get_or_fetch(
+        self, 
+        key: str, 
+        fetch_func: Callable[[], Any],
+        cache_type: str = 'default',
+        custom_ttl: Optional[int] = None
+    ) -> Optional[Any]:
+        """
+        Get value from cache or fetch it if not present.
+        Uses request coalescing to prevent duplicate API calls.
+        
+        Args:
+            key: Cache key
+            fetch_func: Async function to fetch data if not in cache
+            cache_type: Type of cache for TTL
+            custom_ttl: Custom TTL in seconds
+            
+        Returns:
+            Cached or fetched value
+        """
+        # Import here to avoid circular dependency
+        from services.request_coalescer import request_coalescer
+        
+        # Try to get from cache first
+        cached_value = self.get(key)
+        if cached_value is not None:
+            logger.info(f"Cache hit for key: {key}")
+            return cached_value
+        
+        logger.info(f"Cache miss for key: {key}, fetching...")
+        
+        # Create a coalescing key
+        coalesce_key = f"coalesce:{key}"
+        
+        # Define cache function
+        async def cache_result(value):
+            if value is not None:
+                self.set(key, value, cache_type, custom_ttl)
+        
+        # Use request coalescer to fetch data
+        try:
+            result = await request_coalescer.coalesce(
+                coalesce_key, 
+                fetch_func,
+                cache_result
+            )
+            return result
+        except Exception as e:
+            logger.error(f"Error fetching data for key {key}: {e}")
+            return None
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """Get cache statistics"""
+        try:
+            info = self.redis_client.info('stats')
+            return {
+                'hits': info.get('keyspace_hits', 0),
+                'misses': info.get('keyspace_misses', 0),
+                'hit_rate': self._calculate_hit_rate(
+                    info.get('keyspace_hits', 0),
+                    info.get('keyspace_misses', 0)
+                ),
+                'total_keys': self.redis_client.dbsize(),
+                'memory_used': info.get('used_memory_human', 'N/A')
+            }
+        except Exception as e:
+            logger.error(f"Error getting cache stats: {e}")
+            return {}
+    
+    def _calculate_hit_rate(self, hits: int, misses: int) -> float:
+        """Calculate cache hit rate"""
+        total = hits + misses
+        if total == 0:
+            return 0.0
+        return round((hits / total) * 100, 2)

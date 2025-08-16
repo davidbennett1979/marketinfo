@@ -28,7 +28,44 @@ A real-time financial market dashboard that aggregates stock prices, cryptocurre
 - 📅 **Earnings Calendar**: Track upcoming earnings reports with estimates
 - 💡 **Smart Tooltips**: 5 specialized tooltip types with rich information
 - 🔄 **Real-time Updates**: Intelligent polling with connection monitoring
-- 🤖 **AI-Powered Analysis**: TextBlob NLP with financial keyword detection
+- 🤖 **AI Chat Assistant**: 
+  - Claude AI (Anthropic) for complex portfolio analysis and recommendations
+  - Perplexity AI for real-time market data and news searches
+  - Smart query routing between AI providers
+  - Context-aware responses using your watchlist
+  - Source citations for real-time information
+  - Quick action buttons (Add to Watchlist, View Technical Analysis)
+  - Keyboard shortcut (Cmd/Ctrl + K)
+
+### Performance & Architecture Features
+- ⚡ **Request Coalescing**: Prevents duplicate API calls when multiple users request the same data
+- 📊 **Cache Metrics & Monitoring**:
+  - Real-time cache hit rate tracking
+  - Redis memory usage monitoring
+  - System health checks
+  - Cache statistics API endpoint
+- 🔄 **Smart Caching Strategy**:
+  - Configurable TTLs by data type (3-5 min for real-time, 24h for static)
+  - Shared cache between users for efficiency
+  - Request deduplication within cache windows
+- 🛡️ **Rate Limiting**:
+  - Per-API rate limiting (1-2 seconds between requests)
+  - AI chat rate limiting (20 queries/hour per user)
+  - Scraper-specific rate limits
+
+## Architecture & Design Patterns
+
+### Performance Optimizations
+- **Request Coalescing**: The `RequestCoalescer` service prevents duplicate API calls by grouping concurrent requests for the same data. When multiple users request the same uncached data, only one API call is made and all users receive the same response.
+- **Cache-First Architecture**: All API endpoints check Redis cache before making external API calls, with appropriate TTLs based on data volatility.
+- **Async Processing**: FastAPI's async support enables non-blocking I/O operations for better performance.
+- **Connection Pooling**: Reuses database and Redis connections to reduce overhead.
+
+### Service Layer Architecture
+- **Modular Services**: Each data source has its own service class (StockService, CryptoService, etc.)
+- **AI Service Integration**: Claude and Perplexity APIs are wrapped in a unified AIChatService with intelligent routing
+- **Cache Service**: Centralized caching logic with `get_or_fetch` pattern that combines caching with request coalescing
+- **Scraper Base Class**: Common functionality for all web scrapers with built-in rate limiting
 
 ## Tech Stack
 
@@ -48,6 +85,8 @@ A real-time financial market dashboard that aggregates stock prices, cryptocurre
 - **PRAW** - Reddit API wrapper
 - **TextBlob** - Sentiment analysis
 - **Celery** - Background task processing
+- **Claude (Anthropic)** - AI-powered analysis using claude-3-5-sonnet-20241022 model
+- **Perplexity** - Real-time market search using sonar model
 
 ## Getting Started
 
@@ -90,6 +129,9 @@ A real-time financial market dashboard that aggregates stock prices, cryptocurre
    REDDIT_USER_AGENT=TradingDashboard/1.0
    # Optional: NewsAPI key
    NEWSAPI_KEY=your_newsapi_key
+   # AI Services
+   ANTHROPIC_API_KEY=your_anthropic_api_key  # For Claude AI analysis
+   PERPLEXITY_API_KEY=your_perplexity_api_key  # For real-time market search
    ```
 
 4. **Start Redis**
@@ -137,6 +179,17 @@ The application will be available at:
 - `GET /api/sentiment/stocks/popular` - Get sentiment for popular stocks
 - `GET /api/sentiment/stocks/wsb-trending` - Get WSB's most talked about stocks
 - `GET /api/sentiment/stocktwits/{symbol}` - Get StockTwits sentiment
+
+### AI Chat
+- `POST /api/ai/chat` - Smart AI-powered chat with automatic routing to Claude or Perplexity
+- `GET /api/ai/health` - Check health status of AI services
+- `GET /api/ai/usage` - Get user's AI usage statistics (rate limited to 20 queries/hour)
+
+### System & Monitoring
+- `GET /api/system/cache/stats` - Get cache statistics including hit rate and memory usage
+- `GET /api/system/health` - System health check for Redis and API components
+
+### Sentiment Analysis (continued)
 - `GET /api/sentiment/combined/{symbol}` - Get combined sentiment from all sources
 - `POST /api/sentiment/analyze-text` - Analyze custom text sentiment
 

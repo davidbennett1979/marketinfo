@@ -64,6 +64,8 @@ from api.ipo import router as ipo_router
 from api.earnings import router as earnings_router
 from api.watchlist import router as watchlist_router
 from api.technical_analysis import router as technical_router
+from api.ai_chat import router as ai_chat_router
+from api.system import router as system_router
 
 app.include_router(stocks_router)
 app.include_router(crypto_router)
@@ -73,6 +75,8 @@ app.include_router(ipo_router)
 app.include_router(earnings_router)
 app.include_router(watchlist_router)
 app.include_router(technical_router)
+app.include_router(ai_chat_router)
+app.include_router(system_router)
 
 @app.get("/")
 async def root():

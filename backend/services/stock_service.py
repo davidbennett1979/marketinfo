@@ -3,6 +3,9 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 import logging
 import time
+import asyncio
+from services.request_coalescer import request_coalescer
+from services.cache_service import CacheService
 
 logger = logging.getLogger(__name__)
 

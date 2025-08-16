@@ -10,6 +10,7 @@ import WatchlistManager from '@/components/dashboard/WatchlistManager'
 import TechnicalAnalysis from '@/components/dashboard/TechnicalAnalysis'
 import StockSentimentGrid from '@/components/dashboard/StockSentimentGrid'
 import WSBTrendingStocks from '@/components/dashboard/WSBTrendingStocks'
+import ClientLayout from '@/components/layout/ClientLayout'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -21,11 +22,12 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Trading Dashboard</h1>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <ClientLayout>
+      <div className="min-h-screen bg-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-8">Trading Dashboard</h1>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Market Data */}
           <div className="lg:col-span-2 space-y-6">
             {/* Market Indices */}
@@ -58,7 +60,8 @@ export default async function DashboardPage() {
             <IPOTracker />
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </ClientLayout>
   )
 }

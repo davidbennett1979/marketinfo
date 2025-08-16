@@ -246,14 +246,26 @@ async def get_popular_stocks_sentiment(limit: int = Query(default=15, le=30)):
                         }
                 else:
                     # No posts found mentioning this stock
-                    stock_sentiment = create_fallback_sentiment(stock)
+                    # Return empty data instead of mock data when API fails
+                    stock_sentiment = {
+                        'symbol': stock,
+                        'sentiment_score': 0.0,
+                        'classification': 'unknown',
+                        'confidence': 0.0,
+                        'post_count': 0,
+                        'bullish_mentions': 0,
+                        'bearish_mentions': 0,
+                        'rationale': 'Unable to fetch sentiment data',
+                        'last_updated': datetime.now().isoformat()
+                    }
                 
                 stock_sentiments.append(stock_sentiment)
                 
             except Exception as e:
                 logger.error(f"Error analyzing sentiment for {stock}: {str(e)}")
                 # Add fallback data for this stock
-                stock_sentiments.append(create_fallback_sentiment(stock))
+                # Skip stocks with no data instead of creating mock data
+                continue
         
         # Sort by sentiment score (most bullish first)
         stock_sentiments.sort(key=lambda x: x['sentiment_score'], reverse=True)
@@ -273,7 +285,14 @@ async def get_popular_stocks_sentiment(limit: int = Query(default=15, le=30)):
     except Exception as e:
         logger.error(f"Error getting popular stocks sentiment: {str(e)}")
         # Return fallback data to prevent frontend crashes
-        return get_fallback_stocks_sentiment(limit)
+        # Return empty data instead of mock data when Reddit API fails
+        return {
+            'stocks': [],
+            'total_count': 0,
+            'source': 'r/wallstreetbets',
+            'error': 'Unable to fetch sentiment data',
+            'last_updated': datetime.now().isoformat()
+        }
 
 @router.get("/stocks/wsb-trending")
 async def get_wsb_trending_stocks(limit: int = Query(default=5, le=10)):
@@ -427,50 +446,7 @@ def generate_sentiment_rationale(symbol: str, posts: List[Dict], classification:
     else:
         return rationales[3]
 
-def create_fallback_sentiment(symbol: str) -> Dict[str, Any]:
-    """Create fallback sentiment data for a stock."""
-    import random
-    
-    # Generate semi-realistic fallback data
-    sentiment_score = random.uniform(-0.3, 0.3)
-    
-    if sentiment_score > 0.1:
-        classification = 'bullish'
-        rationale = f"Moderate positive sentiment for {symbol} based on market trends"
-    elif sentiment_score < -0.1:
-        classification = 'bearish'
-        rationale = f"Slight bearish sentiment for {symbol} in current market conditions"
-    else:
-        classification = 'neutral'
-        rationale = f"Balanced market sentiment for {symbol} with mixed signals"
-    
-    return {
-        'symbol': symbol,
-        'sentiment_score': round(sentiment_score, 3),
-        'classification': classification,
-        'confidence': round(abs(sentiment_score), 3),
-        'post_count': random.randint(0, 3),
-        'bullish_mentions': random.randint(0, 2),
-        'bearish_mentions': random.randint(0, 2),
-        'rationale': rationale,
-        'last_updated': datetime.now().isoformat()
-    }
-
-def get_fallback_stocks_sentiment(limit: int) -> Dict[str, Any]:
-    """Get fallback sentiment data when API fails."""
-    popular_stocks = [
-        'AAPL', 'MSFT', 'GOOGL', 'TSLA', 'AMZN', 'NVDA', 'META', 'NFLX',
-        'AMD', 'BABA', 'DIS', 'PLTR', 'GME', 'AMC', 'SPCE'
-    ]
-    
-    stock_sentiments = [create_fallback_sentiment(stock) for stock in popular_stocks[:limit]]
-    
-    return {
-        'stocks': stock_sentiments,
-        'total_count': len(stock_sentiments),
-        'source': 'r/wallstreetbets (cached)',
-        'last_updated': datetime.now().isoformat()
-    }
+# Mock data generation functions removed - returning empty data on API failures
 
 def get_fallback_wsb_trending(limit: int) -> Dict[str, Any]:
     """Get fallback WSB trending stocks when API fails."""
