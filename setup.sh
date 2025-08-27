@@ -38,7 +38,13 @@ fi
 echo "📥 Installing Python packages..."
 source venv/bin/activate
 pip install --upgrade pip
-pip install -r requirements.txt
+
+# Install packages with dependency resolution if requirements.txt fails
+echo "🔧 Installing packages with dependency resolution..."
+if ! pip install -r requirements.txt; then
+    echo "⚠️  Requirements.txt failed, trying without version constraints..."
+    pip install fastapi "uvicorn[standard]" python-dotenv pydantic pydantic-settings httpx requests yfinance praw pandas numpy beautifulsoup4 lxml feedparser redis supabase gotrue PyJWT python-multipart textblob anthropic
+fi
 
 cd ../frontend
 

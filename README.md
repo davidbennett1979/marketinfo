@@ -146,7 +146,7 @@ A real-time financial market dashboard that aggregates stock prices, cryptocurre
    npm run dev
    ```
 
-6. **Run one-time setup** (after copying .env file)
+6. **Run one-time setup** (after copying .env file from backend and /env.local from frontend)
    ```bash
    ./setup.sh
    ```
