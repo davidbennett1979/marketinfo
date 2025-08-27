@@ -146,19 +146,37 @@ A real-time financial market dashboard that aggregates stock prices, cryptocurre
    npm run dev
    ```
 
-6. **Install and run the backend**
+6. **Run one-time setup** (after copying .env file)
    ```bash
-   cd backend
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   python main.py
+   ./setup.sh
+   ```
+
+7. **Start the application**
+   ```bash
+   ./start.sh
+   ```
+
+8. **Check status** (optional)
+   ```bash
+   ./status.sh
+   ```
+
+9. **Stop the application**
+   ```bash
+   ./stop.sh
    ```
 
 The application will be available at:
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:8000
 - API Documentation: http://localhost:8000/docs
+
+## Quick Start Scripts
+
+- **`./setup.sh`** - One-time setup (run after git clone + .env copy)
+- **`./start.sh`** - Start all services (daily use)
+- **`./stop.sh`** - Stop all services
+- **`./status.sh`** - Check if everything is running
 
 ## API Endpoints
 

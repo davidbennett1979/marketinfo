@@ -73,5 +73,9 @@ dump.rdb
 logs/
 *.log
 
+# Process ID files
+.backend.pid
+.frontend.pid
+
 # OS
 Thumbs.db
