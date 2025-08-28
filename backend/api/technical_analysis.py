@@ -26,20 +26,21 @@ async def get_technical_analysis() -> List[Dict[str, Any]]:
         symbols = ['AAPL', 'MSFT', 'GOOGL', 'TSLA', 'AMZN', 'NVDA', 'META', 'NFLX']
         
         # Get technical analysis for all symbols
-        results = []
-        for symbol in symbols:
-            try:
-                analysis = await technical_service.get_technical_indicators(symbol)
-                if analysis:
-                    results.append(analysis)
-                    logger.info(f"Retrieved technical analysis for {symbol}")
-                else:
-                    logger.warning(f"No technical analysis data available for {symbol}")
-                    
-            except Exception as e:
-                logger.error(f"Error getting technical analysis for {symbol}: {str(e)}")
-                # Continue with other symbols
-                continue
+        # Limit concurrency to avoid rate limits
+        import asyncio
+        semaphore = asyncio.Semaphore(4)
+
+        async def fetch_symbol(sym: str):
+            async with semaphore:
+                try:
+                    return await technical_service.get_technical_indicators(sym)
+                except Exception as e:
+                    logger.error(f"Error getting technical analysis for {sym}: {e}")
+                    return None
+
+        tasks = [fetch_symbol(s) for s in symbols]
+        results_all = await asyncio.gather(*tasks)
+        results = [r for r in results_all if r]
         
         if not results:
             logger.warning("No technical analysis data available")
@@ -93,27 +94,32 @@ async def get_trading_signals() -> List[Dict[str, Any]]:
         logger.info("Fetching trading signals")
         
         symbols = ['AAPL', 'MSFT', 'GOOGL', 'TSLA', 'AMZN', 'NVDA', 'META', 'NFLX']
+        import asyncio
+        semaphore = asyncio.Semaphore(4)
+
+        async def fetch(sym: str):
+            async with semaphore:
+                try:
+                    return await technical_service.get_technical_indicators(sym)
+                except Exception as e:
+                    logger.error(f"Error getting signal for {sym}: {e}")
+                    return None
+
+        analyses = await asyncio.gather(*[fetch(s) for s in symbols])
         signals = []
-        
-        for symbol in symbols:
-            try:
-                analysis = await technical_service.get_technical_indicators(symbol)
-                if analysis:
-                    signal = {
-                        'symbol': symbol,
-                        'name': analysis.get('name', symbol),
-                        'signal': analysis.get('signal', 'hold'),
-                        'strength': analysis.get('strength', 'weak'),
-                        'current_price': analysis.get('current_price'),
-                        'rsi': analysis.get('rsi'),
-                        'macd_histogram': analysis.get('macd', {}).get('histogram', 0),
-                        'last_updated': analysis.get('last_updated')
-                    }
-                    signals.append(signal)
-                    
-            except Exception as e:
-                logger.error(f"Error getting signal for {symbol}: {str(e)}")
+        for symbol, analysis in zip(symbols, analyses):
+            if not analysis:
                 continue
+            signals.append({
+                'symbol': symbol,
+                'name': analysis.get('name', symbol),
+                'signal': analysis.get('signal', 'hold'),
+                'strength': analysis.get('strength', 'weak'),
+                'current_price': analysis.get('current_price'),
+                'rsi': analysis.get('rsi'),
+                'macd_histogram': analysis.get('macd', {}).get('histogram', 0),
+                'last_updated': analysis.get('last_updated')
+            })
         
         if not signals:
             # Fallback signals data
@@ -159,15 +165,16 @@ async def get_market_technical_overview() -> Dict[str, Any]:
         logger.info("Fetching market technical overview")
         
         symbols = ['AAPL', 'MSFT', 'GOOGL', 'TSLA', 'AMZN', 'NVDA', 'META', 'NFLX']
-        analyses = []
-        
-        for symbol in symbols:
-            try:
-                analysis = await technical_service.get_technical_indicators(symbol)
-                if analysis:
-                    analyses.append(analysis)
-            except Exception:
-                continue
+        import asyncio
+        semaphore = asyncio.Semaphore(4)
+        async def fetch(sym: str):
+            async with semaphore:
+                try:
+                    return await technical_service.get_technical_indicators(sym)
+                except Exception:
+                    return None
+        analyses_all = await asyncio.gather(*[fetch(s) for s in symbols])
+        analyses = [a for a in analyses_all if a]
         
         if not analyses:
             return {

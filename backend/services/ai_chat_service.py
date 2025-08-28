@@ -2,12 +2,15 @@ import os
 import asyncio
 import json
 import hashlib
+import logging
 from typing import Dict, List, Optional, AsyncGenerator
 from datetime import datetime, timedelta
 import httpx
 from anthropic import AsyncAnthropic
 import redis.asyncio as redis
 from fastapi import HTTPException
+
+logger = logging.getLogger(__name__)
 
 class AIChatService:
     def __init__(self):
@@ -36,7 +39,7 @@ class AIChatService:
         try:
             self.redis_client = redis.from_url(redis_url, decode_responses=True)
         except Exception as e:
-            print(f"Failed to connect to Redis: {e}")
+            logger.warning(f"Failed to connect to Redis: {e}")
             self.redis_client = None
     
     async def process_query(self, query: str, user_context: dict) -> Dict:
@@ -92,16 +95,16 @@ class AIChatService:
         
         # Check for analysis keywords first (higher priority)
         if any(keyword in query_lower for keyword in analysis_keywords):
-            print(f"DEBUG: Query '{query}' matched analysis keywords - routing to Claude")
+            logger.debug("AI routing: matched analysis keywords -> Claude")
             return False
             
         # Check for real-time keywords
         if any(keyword in query_lower for keyword in realtime_keywords):
-            print(f"DEBUG: Query '{query}' matched real-time keywords - routing to Perplexity")
+            logger.debug("AI routing: matched real-time keywords -> Perplexity")
             return True
             
         # Default to Perplexity for general queries
-        print(f"DEBUG: Query '{query}' using default routing - Perplexity")
+        logger.debug("AI routing: default -> Perplexity")
         return True
     
     async def _perplexity_search(self, query: str, context: dict) -> Dict:
@@ -146,10 +149,13 @@ class AIChatService:
                 if response.status_code == 200:
                     data = response.json()
                     
-                    # Debug: Print the response structure
-                    print(f"DEBUG: Perplexity response keys: {data.keys()}")
-                    if "choices" in data and len(data["choices"]) > 0:
-                        print(f"DEBUG: Choice keys: {data['choices'][0].keys()}")
+                    # Debug: Log the response structure
+                    try:
+                        logger.debug(f"Perplexity response keys: {list(data.keys())}")
+                        if "choices" in data and len(data["choices"]) > 0:
+                            logger.debug(f"Perplexity choice keys: {list(data['choices'][0].keys())}")
+                    except Exception:
+                        pass
                     
                     message = data["choices"][0]["message"]["content"]
                     

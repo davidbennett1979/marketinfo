@@ -3,10 +3,10 @@ from services.cache_service import CacheService
 from api.watchlist import get_user_id_from_token
 import logging
 
-router = APIRouter()
+router = APIRouter(prefix="/api/system", tags=["system"]) 
 logger = logging.getLogger(__name__)
 
-@router.get("/api/system/cache/stats")
+@router.get("/cache/stats")
 async def get_cache_stats(current_user: str = Depends(get_user_id_from_token)):
     """
     Get cache statistics including hit rate and memory usage.
@@ -31,7 +31,7 @@ async def get_cache_stats(current_user: str = Depends(get_user_id_from_token)):
             "message": "Failed to retrieve cache statistics"
         }
 
-@router.get("/api/system/health")
+@router.get("/health")
 async def health_check():
     """
     System health check endpoint.

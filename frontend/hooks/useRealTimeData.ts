@@ -195,11 +195,12 @@ export function useMarketData(symbols: string[] = []) {
 
 // Specialized hook for sentiment data
 export function useSentimentData() {
-  return useRealTimeData<any[]>({
-    url: `${process.env.NEXT_PUBLIC_API_URL}/api/sentiment`,
+  return useRealTimeData<any>({
+    url: `${process.env.NEXT_PUBLIC_API_URL}/api/sentiment/stocks/popular`,
     refreshInterval: 300000, // 5 minutes for sentiment
     onData: (data) => {
-      console.log('💭 Sentiment data updated:', data.length, 'entries')
+      const count = Array.isArray(data?.stocks) ? data.stocks.length : 0
+      console.log('💭 Sentiment data updated:', count, 'entries')
     },
     onError: (error) => {
       console.error('❌ Sentiment data error:', error.message)
@@ -224,7 +225,7 @@ export function useCryptoData() {
 // Hook for news updates
 export function useNewsData() {
   return useRealTimeData<any[]>({
-    url: `${process.env.NEXT_PUBLIC_API_URL}/api/news`,
+    url: `${process.env.NEXT_PUBLIC_API_URL}/api/news/latest`,
     refreshInterval: 600000, // 10 minutes for news
     onData: (data) => {
       console.log('📰 News data updated:', data.length, 'articles')

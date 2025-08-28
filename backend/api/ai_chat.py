@@ -11,7 +11,7 @@ from services.ai_chat_service import AIChatService
 from services.watchlist_service import WatchlistService
 from api.watchlist import get_user_id_from_token
 
-router = APIRouter()
+router = APIRouter(prefix="/api/ai", tags=["ai"]) 
 ai_service = AIChatService()
 watchlist_service = WatchlistService()
 
@@ -22,6 +22,7 @@ class ChatRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=500)
     context: Optional[Dict] = Field(default_factory=dict)
     stream: bool = Field(default=False)
+    provider: Optional[str] = Field(default=None, description="Force provider: 'claude' or 'perplexity'")
 
 class ChatResponse(BaseModel):
     content: str
@@ -55,7 +56,7 @@ async def rate_limit_check(user_id: str) -> bool:
     
     return True
 
-@router.post("/api/ai/chat")
+@router.post("/chat")
 async def chat(
     request: ChatRequest,
     current_user: str = Depends(get_user_id_from_token)
@@ -88,8 +89,18 @@ async def chat(
         "timestamp": datetime.now().isoformat()
     }
     
+    # Provider override if requested
+    provider_override = request.provider.lower() if request.provider else None
+    if provider_override not in (None, 'claude', 'perplexity'):
+        raise HTTPException(status_code=400, detail="Invalid provider. Use 'claude' or 'perplexity'.")
+
+    # Decide routing (streaming only supported for Claude path)
+    route_to_perplexity = (
+        provider_override == 'perplexity' if provider_override is not None else ai_service._needs_realtime_data(request.query)
+    )
+
     # Handle streaming for Claude queries
-    if request.stream and not ai_service._needs_realtime_data(request.query):
+    if request.stream and not route_to_perplexity:
         async def generate():
             try:
                 async for chunk in ai_service.stream_claude_response(request.query, enhanced_context):
@@ -109,10 +120,16 @@ async def chat(
     
     # Non-streaming response
     try:
-        response = await asyncio.wait_for(
-            ai_service.process_query(request.query, enhanced_context),
-            timeout=ai_service.request_timeout
-        )
+        # If forced provider, bypass smart routing
+        if provider_override == 'claude':
+            response = await ai_service._claude_analysis(request.query, enhanced_context)
+        elif provider_override == 'perplexity':
+            response = await ai_service._perplexity_search(request.query, enhanced_context)
+        else:
+            response = await asyncio.wait_for(
+                ai_service.process_query(request.query, enhanced_context),
+                timeout=ai_service.request_timeout
+            )
         
         # Check if there was an error
         if response.get("error"):
@@ -147,7 +164,7 @@ async def chat(
             detail=f"Error processing query: {str(e)}"
         )
 
-@router.get("/api/ai/health")
+@router.get("/health")
 async def health_check():
     """Check health status of AI services"""
     health = await ai_service.check_health()
@@ -158,7 +175,7 @@ async def health_check():
         "rate_limit": int(os.getenv("AI_RATE_LIMIT_PER_HOUR", "20"))
     }
 
-@router.get("/api/ai/usage")
+@router.get("/usage")
 async def get_usage(current_user: str = Depends(get_user_id_from_token)):
     """Get user's AI usage statistics"""
     now = datetime.now()
@@ -173,4 +190,3 @@ async def get_usage(current_user: str = Depends(get_user_id_from_token)):
         "limit_per_hour": int(os.getenv("AI_RATE_LIMIT_PER_HOUR", "20")),
         "remaining": max(0, int(os.getenv("AI_RATE_LIMIT_PER_HOUR", "20")) - len(recent_requests))
     }
-

@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from typing import List, Optional
 from services.stock_service import StockService
 from services.cache_service import CacheService
+import asyncio
 
 router = APIRouter(prefix="/api/stocks", tags=["stocks"])
 cache = CacheService()
@@ -9,18 +10,14 @@ cache = CacheService()
 @router.get("/price/{symbol}")
 async def get_stock_price(symbol: str):
     """Get current stock price"""
-    # Check cache first
-    cached_data = cache.get_stock_price(symbol)
-    if cached_data:
-        return cached_data
-    
-    # Fetch fresh data
-    data = StockService.get_stock_price(symbol)
+    key = f"stock:price:{symbol}"
+
+    async def fetch():
+        return await asyncio.to_thread(StockService.get_stock_price, symbol)
+
+    data = await cache.get_or_fetch(key, fetch, cache_type='stock_price')
     if not data:
         raise HTTPException(status_code=404, detail=f"Stock {symbol} not found")
-    
-    # Cache the result
-    cache.set_stock_price(symbol, data)
     return data
 
 @router.get("/multiple")
@@ -40,29 +37,25 @@ async def get_stock_prices(symbols: str = ""):
     symbol_list = [s.strip().upper() for s in symbols.split(',') if s.strip()]
     
     if not symbol_list:
-        return {}
+        return []
     
     try:
-        results = StockService.get_multiple_stocks(symbol_list)
+        results = await asyncio.to_thread(StockService.get_multiple_stocks, symbol_list)
         return results
     except Exception as e:
-        # Return empty dict to prevent frontend crashes
-        return {}
+        # Return empty list to prevent frontend crashes
+        return []
 
 @router.get("/indices")
 async def get_market_indices():
     """Get major market indices"""
-    # Check cache first
-    cached_data = cache.get_market_indices()
-    if cached_data:
-        return cached_data
-    
-    # Fetch fresh data
-    data = StockService.get_market_indices()
-    
-    # Cache the result
-    cache.set_market_indices(data)
-    return data
+    key = "market:indices"
+
+    async def fetch():
+        return await asyncio.to_thread(StockService.get_market_indices)
+
+    data = await cache.get_or_fetch(key, fetch, cache_type='market_indices')
+    return data or []
 
 @router.get("/history/{symbol}")
 async def get_stock_history(symbol: str, period: str = "1mo"):

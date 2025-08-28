@@ -6,6 +6,7 @@ from scrapers.stocktwits_scraper import StockTwitsScraper
 from services.cache_service import CacheService
 from datetime import datetime
 import logging
+import asyncio
 
 router = APIRouter(prefix="/api/sentiment", tags=["sentiment"])
 cache = CacheService()
@@ -49,7 +50,7 @@ async def get_stocktwits_sentiment(symbol: str, limit: int = Query(default=30, l
     
     try:
         scraper = StockTwitsScraper()
-        result = scraper.scrape_symbol_sentiment(symbol, limit)
+        result = await asyncio.to_thread(scraper.scrape_symbol_sentiment, symbol, limit)
         scraper.close()
         
         # Cache for 30 minutes
@@ -72,7 +73,7 @@ async def get_stocktwits_trending(limit: int = Query(default=20, le=50)):
     
     try:
         scraper = StockTwitsScraper()
-        result = scraper.scrape_trending_symbols(limit)
+        result = await asyncio.to_thread(scraper.scrape_trending_symbols, limit)
         scraper.close()
         
         # Cache for 15 minutes

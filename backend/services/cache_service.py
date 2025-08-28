@@ -23,6 +23,7 @@ class CacheService:
             'news': 900,            # 15 minutes
             'historical': 3600,     # 1 hour
             'company_info': 86400,  # 24 hours
+            'technical': 900,       # 15 minutes
         }
     
     def get(self, key: str) -> Optional[Any]:
@@ -58,12 +59,15 @@ class CacheService:
             return False
     
     def clear_pattern(self, pattern: str) -> int:
-        """Clear all keys matching a pattern"""
+        """Clear all keys matching a pattern using SCAN to avoid blocking."""
         try:
-            keys = self.redis_client.keys(pattern)
-            if keys:
-                return self.redis_client.delete(*keys)
-            return 0
+            total = 0
+            for key in self.redis_client.scan_iter(pattern):
+                try:
+                    total += int(self.redis_client.delete(key))
+                except Exception as inner_e:
+                    logger.debug(f"Failed to delete key {key}: {inner_e}")
+            return total
         except Exception as e:
             logger.error(f"Error clearing pattern from cache: {str(e)}")
             return 0

@@ -3,6 +3,7 @@ from typing import List, Optional
 from scrapers.news_scraper import NewsScraperRSS, EarningsCalendarScraper
 from services.cache_service import CacheService
 import logging
+import asyncio
 
 router = APIRouter(prefix="/api/news", tags=["news"])
 cache = CacheService()
@@ -21,7 +22,7 @@ async def get_latest_news(limit: int = 50):
     # Fetch fresh data
     try:
         scraper = NewsScraperRSS()
-        articles = scraper.scrape_all_feeds()
+        articles = await asyncio.to_thread(scraper.scrape_all_feeds)
         
         # Limit results
         articles = articles[:limit]
@@ -47,7 +48,7 @@ async def get_earnings_calendar():
     # Use the real earnings calendar scraper
     try:
         scraper = EarningsCalendarScraper()
-        earnings_data = scraper.scrape()
+        earnings_data = await asyncio.to_thread(scraper.scrape)
         
         # Cache the results if we got data
         if earnings_data:
@@ -75,7 +76,7 @@ async def get_short_interest():
     try:
         from scrapers.news_scraper import ShortInterestScraper
         scraper = ShortInterestScraper()
-        short_data = scraper.scrape()
+        short_data = await asyncio.to_thread(scraper.scrape)
         
         # Cache the results if we got data
         if short_data:

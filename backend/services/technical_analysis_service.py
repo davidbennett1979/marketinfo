@@ -59,7 +59,8 @@ class TechnicalAnalysisService:
                 ticker = yf.Ticker(symbol)
                 
                 # Get 6 months of daily data for calculations
-                hist = ticker.history(period="6mo", timeout=10)
+                # Note: yfinance.Ticker.history does not accept a timeout kwarg
+                hist = ticker.history(period="6mo")
                 if hist.empty:
                     logger.warning(f"No historical data available for {symbol}")
                     if attempt < retry_count - 1:
@@ -106,7 +107,7 @@ class TechnicalAnalysisService:
                 
                 # Also cache in Redis for 15 minutes
                 try:
-                    redis_cache.set(redis_key, indicators, 'technical', ttl=900)
+                    redis_cache.set(redis_key, indicators, 'technical', custom_ttl=900)
                 except Exception as e:
                     logger.debug(f"Redis cache set failed: {e}")
                 
