@@ -56,11 +56,18 @@ class TechnicalAnalysisService:
                 logger.info(f"Calculating technical indicators for {symbol} (attempt {attempt + 1}/{retry_count})")
                 
                 # Fetch stock data with timeout
-                ticker = yf.Ticker(symbol)
-                
-                # Get 6 months of daily data for calculations
-                # Note: yfinance.Ticker.history does not accept a timeout kwarg
-                hist = ticker.history(period="6mo")
+                # Get 6 months of daily data for calculations without blocking the event loop
+                async def _fetch_hist():
+                    return yf.Ticker(symbol).history(period="6mo")
+
+                try:
+                    hist = await asyncio.wait_for(asyncio.to_thread(_fetch_hist), timeout=15)
+                except asyncio.TimeoutError:
+                    logger.warning(f"Timeout fetching historical data for {symbol}")
+                    if attempt < retry_count - 1:
+                        await asyncio.sleep(2 ** attempt)
+                        continue
+                    return None
                 if hist.empty:
                     logger.warning(f"No historical data available for {symbol}")
                     if attempt < retry_count - 1:
@@ -69,7 +76,11 @@ class TechnicalAnalysisService:
                         continue
                     return None
                 
-                info = ticker.info
+                # Fetch info lazily; if it fails, fall back to symbol
+                try:
+                    info = yf.Ticker(symbol).info
+                except Exception:
+                    info = {}
                 current_price = float(hist['Close'].iloc[-1])
                 
                 # Calculate technical indicators

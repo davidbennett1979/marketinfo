@@ -123,16 +123,26 @@ A real-time financial market dashboard that aggregates stock prices, cryptocurre
    SUPABASE_URL=your_supabase_url
    SUPABASE_KEY=your_service_role_key
    REDIS_URL=redis://localhost:6379
+   # IPO & Earnings data (recommended)
+   FINANCIAL_MODELING_PREP_API_KEY=your_fmp_key
+   ALPHA_VANTAGE_API_KEY=your_alpha_vantage_key
    # Optional: Reddit API (for live sentiment)
    REDDIT_CLIENT_ID=your_reddit_client_id
    REDDIT_CLIENT_SECRET=your_reddit_client_secret
    REDDIT_USER_AGENT=TradingDashboard/1.0
    # Optional: NewsAPI key
    NEWSAPI_KEY=your_newsapi_key
+   # CORS (comma-separated origins)
+   CORS_ALLOW_ORIGINS=http://localhost:3000
    # AI Services
    ANTHROPIC_API_KEY=your_anthropic_api_key  # For Claude AI analysis
    PERPLEXITY_API_KEY=your_perplexity_api_key  # For real-time market search
    ```
+
+### API Keys (short guide)
+
+- The IPO tracker now uses Financial Modeling Prep as the primary source, with Alpha Vantage, MarketWatch, and Yahoo Finance as fallbacks. Without an FMP key, coverage may be sparse.
+- No mock IPO data is shown; widgets display real data or an empty state.
 
 4. **Start Redis**
    ```bash

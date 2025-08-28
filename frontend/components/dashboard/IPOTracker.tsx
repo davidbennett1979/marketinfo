@@ -17,13 +17,17 @@ interface IPO {
 interface RecentIPO {
   company: string
   symbol: string
-  ipo_date: string
-  ipo_price: number
-  current_price: number
-  change_percent: number
-  first_day_close: number
-  market_cap: string
-  performance: string
+  // Backend may return 'date' for recent IPOs; keep both optional for safety
+  ipo_date?: string
+  date?: string
+  // Optional performance fields (may be missing for some sources)
+  ipo_price?: number
+  current_price?: number
+  change_percent?: number
+  first_day_close?: number
+  market_cap?: string
+  performance?: string
+  source?: string
 }
 
 interface IPOTrackerProps {
@@ -48,10 +52,18 @@ export default function IPOTracker({ className = '' }: IPOTrackerProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'upcoming' | 'recent'>('upcoming')
+  const [recentLookback, setRecentLookback] = useState<number>(90)
 
   useEffect(() => {
     fetchIPOData()
   }, [])
+
+  // Refetch when lookback window changes
+  useEffect(() => {
+    if (activeTab === 'recent') {
+      fetchIPOData()
+    }
+  }, [recentLookback])
 
   const fetchIPOData = async () => {
     try {
@@ -62,7 +74,7 @@ export default function IPOTracker({ className = '' }: IPOTrackerProps) {
       
       const [upcomingResponse, recentResponse] = await Promise.all([
         authenticatedFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/ipo/upcoming?days_ahead=30`),
-        authenticatedFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/ipo/recent?days_back=30`)
+        authenticatedFetch(`${process.env.NEXT_PUBLIC_API_URL}/api/ipo/recent?days_back=${recentLookback}`)
       ])
       
       console.log('📊 Response status:', upcomingResponse.status, recentResponse.status)
@@ -183,9 +195,26 @@ export default function IPOTracker({ className = '' }: IPOTrackerProps) {
           <CalendarIcon className="w-5 h-5 mr-2 text-blue-500" />
           IPO Tracker
         </h2>
-        <Tooltip content="Initial Public Offerings - Companies going public on stock exchanges">
-          <InfoIcon className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-        </Tooltip>
+        <div className="flex items-center space-x-2">
+          {activeTab === 'recent' && (
+            <div className="flex items-center text-xs text-gray-600">
+              <span className="mr-2">Recent window:</span>
+              <select
+                value={recentLookback}
+                onChange={(e) => setRecentLookback(parseInt(e.target.value, 10))}
+                className="px-2 py-1 border border-gray-300 rounded bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                aria-label="Select recent IPO lookback window"
+              >
+                <option value={30}>30d</option>
+                <option value={60}>60d</option>
+                <option value={90}>90d</option>
+              </select>
+            </div>
+          )}
+          <Tooltip content="Initial Public Offerings - Companies going public on stock exchanges">
+            <InfoIcon className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+          </Tooltip>
+        </div>
       </div>
       
       {/* Tab Navigation */}
@@ -275,7 +304,17 @@ export default function IPOTracker({ className = '' }: IPOTrackerProps) {
           )
         ) : (
           recentIPOs.length > 0 ? (
-            recentIPOs.map((ipo, index) => (
+            recentIPOs.map((ipo, index) => {
+              const ipoDate = ipo.ipo_date || ipo.date || ''
+              const hasPerf = typeof ipo.change_percent === 'number' && typeof ipo.ipo_price === 'number'
+              const ipoPriceText =
+                typeof ipo.ipo_price === 'number'
+                  ? `$${ipo.ipo_price.toFixed(2)}`
+                  : // Fall back to price_range if available on recent items
+                    (upcomingIPOs.find(u => u.symbol === ipo.symbol)?.price_range || 'TBD')
+              const currentPriceText =
+                typeof ipo.current_price === 'number' ? `$${ipo.current_price.toFixed(2)}` : 'N/A'
+              return (
               <div key={index} className="border-b last:border-0 pb-3 last:pb-0 hover:bg-gray-50 rounded p-2 transition-colors">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
@@ -289,22 +328,29 @@ export default function IPOTracker({ className = '' }: IPOTrackerProps) {
                       </span>
                     </div>
                     <div className="flex items-center space-x-4 text-xs text-gray-500">
-                      <span>IPO: ${ipo.ipo_price.toFixed(2)}</span>
-                      <span>Current: ${ipo.current_price.toFixed(2)}</span>
-                      <span>{formatDate(ipo.ipo_date)}</span>
+                      <span>IPO: {ipoPriceText}</span>
+                      <span>Current: {currentPriceText}</span>
+                      <span>{formatDate(ipoDate)}</span>
                     </div>
                   </div>
-                  <Tooltip content={getPerformanceTooltip(ipo)}>
-                    <div className={`flex items-center text-xs font-medium cursor-help ${getPerformanceColor(ipo.change_percent)}`}>
-                      {getPerformanceIcon(ipo.change_percent)}
-                      <span className="ml-1">
-                        {ipo.change_percent > 0 ? '+' : ''}{ipo.change_percent.toFixed(1)}%
-                      </span>
-                    </div>
-                  </Tooltip>
+                  <div className="text-right">
+                    {hasPerf && (
+                      <Tooltip content={getPerformanceTooltip(ipo as Required<RecentIPO>)}>
+                        <div className={`flex items-center justify-end text-xs font-medium cursor-help ${getPerformanceColor(ipo.change_percent as number)}`}>
+                          {getPerformanceIcon(ipo.change_percent as number)}
+                          <span className="ml-1">
+                            {(ipo.change_percent as number) > 0 ? '+' : ''}{(ipo.change_percent as number).toFixed(1)}%
+                          </span>
+                        </div>
+                      </Tooltip>
+                    )}
+                    {ipo.source && (
+                      <div className="text-xs text-gray-400 mt-1">{ipo.source}</div>
+                    )}
+                  </div>
                 </div>
               </div>
-            ))
+            )})
           ) : (
             <p className="text-gray-500 text-sm text-center py-4">
               No recent IPOs found
@@ -316,8 +362,8 @@ export default function IPOTracker({ className = '' }: IPOTrackerProps) {
       {/* Footer */}
       <div className="mt-4 pt-3 border-t">
         <div className="flex items-center justify-between text-xs text-gray-500">
-          <Tooltip content="Data sourced from MarketWatch and Yahoo Finance IPO calendars">
-            <span className="cursor-help">IPO data from multiple sources</span>
+          <Tooltip content="Sources: Financial Modeling Prep (primary), Alpha Vantage, MarketWatch, Yahoo Finance">
+            <span className="cursor-help">IPO data from FMP, AV, MW, Yahoo</span>
           </Tooltip>
           <Tooltip content="IPO dates and details may change. Always verify before investing.">
             <span className="cursor-help">Updated every 4 hours</span>

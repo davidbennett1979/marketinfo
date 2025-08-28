@@ -121,30 +121,7 @@ async def get_trading_signals() -> List[Dict[str, Any]]:
                 'last_updated': analysis.get('last_updated')
             })
         
-        if not signals:
-            # Fallback signals data
-            signals = [
-                {
-                    'symbol': 'AAPL',
-                    'name': 'Apple Inc.',
-                    'signal': 'buy',
-                    'strength': 'moderate',
-                    'current_price': 178.25,
-                    'rsi': 65.2,
-                    'macd_histogram': 0.56,
-                    'last_updated': datetime.now().isoformat()
-                },
-                {
-                    'symbol': 'MSFT',
-                    'name': 'Microsoft Corporation',
-                    'signal': 'hold',
-                    'strength': 'weak',
-                    'current_price': 382.15,
-                    'rsi': 58.7,
-                    'macd_histogram': 0.25,
-                    'last_updated': datetime.now().isoformat()
-                }
-            ]
+        # If no signals could be computed, return an empty list (no mock data)
         
         logger.info(f"Retrieved trading signals for {len(signals)} symbols")
         return signals

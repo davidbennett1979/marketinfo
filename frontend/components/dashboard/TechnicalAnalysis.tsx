@@ -67,99 +67,12 @@ export default function TechnicalAnalysis({ className = '' }: TechnicalAnalysisP
     } catch (err) {
       console.error('❌ Technical analysis fetch error:', err)
       setError('Failed to load technical analysis')
-      // Use mock data when API fails
-      setIndicators(getMockTechnicalData())
+      // Do not use mock data; keep indicators empty on failure
+      setIndicators([])
     } finally {
       setLoading(false)
     }
   }
-
-  const getMockTechnicalData = (): TechnicalIndicator[] => [
-    {
-      symbol: 'AAPL',
-      name: 'Apple Inc.',
-      rsi: 65.2,
-      macd: {
-        macd: 2.45,
-        signal: 1.89,
-        histogram: 0.56
-      },
-      sma_20: 175.80,
-      sma_50: 172.30,
-      bollinger_bands: {
-        upper: 182.50,
-        middle: 175.80,
-        lower: 169.10
-      },
-      current_price: 178.25,
-      signal: 'buy',
-      strength: 'moderate',
-      last_updated: new Date().toISOString()
-    },
-    {
-      symbol: 'MSFT',
-      name: 'Microsoft Corporation',
-      rsi: 58.7,
-      macd: {
-        macd: 1.23,
-        signal: 0.98,
-        histogram: 0.25
-      },
-      sma_20: 380.50,
-      sma_50: 375.20,
-      bollinger_bands: {
-        upper: 395.20,
-        middle: 380.50,
-        lower: 365.80
-      },
-      current_price: 382.15,
-      signal: 'hold',
-      strength: 'weak',
-      last_updated: new Date().toISOString()
-    },
-    {
-      symbol: 'GOOGL',
-      name: 'Alphabet Inc.',
-      rsi: 72.8,
-      macd: {
-        macd: -0.85,
-        signal: -0.45,
-        histogram: -0.40
-      },
-      sma_20: 142.60,
-      sma_50: 145.80,
-      bollinger_bands: {
-        upper: 152.30,
-        middle: 142.60,
-        lower: 132.90
-      },
-      current_price: 140.25,
-      signal: 'sell',
-      strength: 'strong',
-      last_updated: new Date().toISOString()
-    },
-    {
-      symbol: 'TSLA',
-      name: 'Tesla Inc.',
-      rsi: 45.3,
-      macd: {
-        macd: -2.15,
-        signal: -1.80,
-        histogram: -0.35
-      },
-      sma_20: 245.80,
-      sma_50: 250.30,
-      bollinger_bands: {
-        upper: 265.20,
-        middle: 245.80,
-        lower: 226.40
-      },
-      current_price: 242.50,
-      signal: 'buy',
-      strength: 'strong',
-      last_updated: new Date().toISOString()
-    }
-  ]
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -214,6 +127,19 @@ export default function TechnicalAnalysis({ className = '' }: TechnicalAnalysisP
             <div key={i} className="h-20 bg-gray-100 rounded animate-pulse" />
           ))}
         </div>
+      </div>
+    )
+  }
+
+  // No data state
+  if (!loading && !error && indicators.length === 0) {
+    return (
+      <div className={`bg-white rounded-lg shadow p-6 ${className}`}>
+        <h2 className="text-xl font-semibold mb-2 flex items-center">
+          <BarChartIcon className="w-5 h-5 mr-2 text-blue-500" />
+          Technical Analysis
+        </h2>
+        <p className="text-sm text-gray-600">No technical data available right now. Try again shortly.</p>
       </div>
     )
   }

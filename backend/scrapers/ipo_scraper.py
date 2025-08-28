@@ -61,7 +61,17 @@ class IPOScraper:
             # Try multiple sources and combine results
             all_ipos = []
             
-            # Source 1: Alpha Vantage API (primary source)
+            # Source 1: Financial Modeling Prep (primary)
+            try:
+                from services.financial_modeling_prep_service import FinancialModelingPrepService
+                fmp = FinancialModelingPrepService()
+                fmp_ipos = await fmp.get_ipo_calendar(days_ahead)
+                all_ipos.extend(fmp_ipos)
+                logger.info(f"Got {len(fmp_ipos)} IPOs from Financial Modeling Prep")
+            except Exception as e:
+                logger.warning(f"FMP IPO fetch failed: {str(e)}")
+
+            # Source 2: Alpha Vantage API (primary source)
             try:
                 alpha_vantage_ipos = await self.alpha_vantage.get_ipo_calendar(days_ahead)
                 
@@ -118,12 +128,16 @@ class IPOScraper:
             
             # Deduplicate and filter by date
             unique_ipos = self._deduplicate_ipos(all_ipos)
-            end_date = datetime.now() + timedelta(days=days_ahead)
+            start_date = datetime.now().date()
+            end_date = (datetime.now() + timedelta(days=days_ahead)).date()
             
             filtered_ipos = []
             for ipo in unique_ipos:
-                ipo_date = self._parse_date(ipo.get('date', ''))
-                if ipo_date and ipo_date <= end_date:
+                ipo_dt = self._parse_date(ipo.get('date', ''))
+                if not ipo_dt:
+                    continue
+                ipo_date = ipo_dt.date()
+                if start_date <= ipo_date <= end_date:
                     filtered_ipos.append(ipo)
             
             # Sort by date
@@ -191,35 +205,50 @@ class IPOScraper:
             soup = BeautifulSoup(response.content, 'html.parser')
             ipos = []
             
-            # Look for IPO data in various formats
-            # Try to find any text that looks like IPO data
-            text_content = soup.get_text()
-            
-            # Look for company names followed by ticker symbols
-            # Pattern: Company Name (TICKER) Date Price
-            ipo_patterns = re.findall(r'([A-Za-z\s&\.]+)\s*\(([A-Z]{2,5})\)\s*([0-9\/\-]+)\s*\$?([0-9\-\$\.]+)', text_content)
-            
-            for match in ipo_patterns:
-                company, symbol, date, price_info = match
-                company = company.strip()
-                
-                # Skip if company name is too short or generic
-                if len(company) < 3 or company.lower() in ['ipo', 'stock', 'share']:
-                    continue
-                
-                ipo_data = {
-                    'company': company,
-                    'symbol': symbol,
-                    'date': date,
-                    'price_range': f"${price_info}" if not price_info.startswith('$') else price_info,
-                    'shares': 'N/A',
-                    'market_cap': 'N/A',
-                    'source': 'MarketWatch'
-                }
-                
-                ipos.append(ipo_data)
-                if len(ipos) >= 10:  # Limit results
-                    break
+            # Attempt table-based parsing first
+            rows = soup.select('table tbody tr') or []
+            for row in rows:
+                cells = [c.get_text(strip=True) for c in row.find_all('td')]
+                if len(cells) >= 3:
+                    company = cells[0]
+                    # Extract symbol if present in parentheses
+                    sym_match = re.findall(r'\(([A-Z]{2,5})\)', company)
+                    symbol = sym_match[0] if sym_match else 'TBD'
+                    date = cells[1]
+                    price_info = cells[2] if len(cells) > 2 else 'TBD'
+                    if company and len(company) >= 3:
+                        ipos.append({
+                            'company': re.sub(r'\s*\([A-Z]{2,5}\)\s*', '', company),
+                            'symbol': symbol,
+                            'date': date,
+                            'price_range': price_info or 'TBD',
+                            'shares': 'N/A',
+                            'market_cap': 'N/A',
+                            'source': 'MarketWatch'
+                        })
+                        if len(ipos) >= 10:
+                            break
+
+            # Fallback to regex over full text
+            if not ipos:
+                text_content = soup.get_text()
+                ipo_patterns = re.findall(r'([A-Za-z\s&\.]+)\s*\(([A-Z]{2,5})\)\s*([0-9\/\-]+)\s*\$?([0-9\-\$\.]+)', text_content)
+                for match in ipo_patterns:
+                    company, symbol, date, price_info = match
+                    company = company.strip()
+                    if len(company) < 3 or company.lower() in ['ipo', 'stock', 'share']:
+                        continue
+                    ipos.append({
+                        'company': company,
+                        'symbol': symbol,
+                        'date': date,
+                        'price_range': f"${price_info}" if not price_info.startswith('$') else price_info,
+                        'shares': 'N/A',
+                        'market_cap': 'N/A',
+                        'source': 'MarketWatch'
+                    })
+                    if len(ipos) >= 10:
+                        break
             
             return ipos
             
@@ -239,45 +268,29 @@ class IPOScraper:
             soup = BeautifulSoup(response.content, 'html.parser')
             ipos = []
             
-            # Yahoo uses table structure for IPO data
-            tables = soup.find_all('table')
+            # Robust table parsing
+            rows = soup.select('table tbody tr') or []
+            for row in rows:
+                cells = [c.get_text(strip=True) for c in row.find_all('td')]
+                if len(cells) >= 4:
+                    company = cells[0]
+                    symbol = cells[1]
+                    date_text = cells[2]
+                    price_range = cells[3]
+                    if company and len(company) >= 2:
+                        ipos.append({
+                            'company': company,
+                            'symbol': (symbol or 'TBD').upper(),
+                            'date': date_text,
+                            'price_range': price_range if price_range and price_range != '-' else 'N/A',
+                            'shares': 'N/A',
+                            'market_cap': 'N/A',
+                            'source': 'Yahoo Finance'
+                        })
+                        if len(ipos) >= 15:
+                            break
             
-            for table in tables:
-                tbody = table.find('tbody')
-                if not tbody:
-                    continue
-                    
-                rows = tbody.find_all('tr')
-                
-                for row in rows:
-                    cells = row.find_all('td')
-                    if len(cells) >= 4:
-                        try:
-                            company = cells[0].get_text(strip=True)
-                            symbol = cells[1].get_text(strip=True)
-                            date_text = cells[2].get_text(strip=True)
-                            price_range = cells[3].get_text(strip=True)
-                            
-                            # Skip empty or invalid data
-                            if not company or len(company) < 2:
-                                continue
-                                
-                            ipo_data = {
-                                'company': company,
-                                'symbol': symbol if symbol and symbol != '-' else 'TBD',
-                                'date': date_text,
-                                'price_range': price_range if price_range and price_range != '-' else 'N/A',
-                                'shares': 'N/A',
-                                'market_cap': 'N/A',
-                                'source': 'Yahoo Finance'
-                            }
-                            
-                            ipos.append(ipo_data)
-                            
-                        except Exception as e:
-                            continue  # Skip problematic rows
-            
-            return ipos[:15]  # Limit to 15 IPOs
+            return ipos
             
         except Exception as e:
             logger.error(f"Error scraping Yahoo IPOs: {str(e)}")
@@ -339,18 +352,36 @@ class IPOScraper:
             return cached_data
         
         try:
-            # Try to fetch real recent IPO data from Alpha Vantage if available
-            alpha_vantage = AlphaVantageService()
-            recent_ipos = await alpha_vantage.get_ipo_calendar(days_ahead=0)  # Get recent IPOs
+            # Prefer FMP recent IPOs (date range)
+            try:
+                from services.financial_modeling_prep_service import FinancialModelingPrepService
+                fmp = FinancialModelingPrepService()
+                recent_ipos = await fmp.get_recent_ipos(days_back)
+            except Exception:
+                recent_ipos = []
+            
+            # Fallbacks: attempt scrapes (Yahoo/MarketWatch) instead of Alpha Vantage,
+            # because AV IPO_CALENDAR only returns upcoming IPOs.
+            if not recent_ipos:
+                scraped: List[Dict[str, Any]] = []
+                try:
+                    scraped.extend(await self._scrape_yahoo_ipos())
+                except Exception:
+                    pass
+                try:
+                    scraped.extend(await self._scrape_marketwatch_ipos())
+                except Exception:
+                    pass
+                recent_ipos = scraped
             
             if recent_ipos:
                 # Filter for recent IPOs within days_back period
-                start_date = datetime.now() - timedelta(days=days_back)
+                start_date = (datetime.now() - timedelta(days=days_back)).date()
                 filtered_ipos = []
                 
                 for ipo in recent_ipos:
-                    ipo_date = self._parse_date(ipo.get('date', ''))
-                    if ipo_date and ipo_date >= start_date.date():
+                    ipo_dt = self._parse_date(ipo.get('date', ''))
+                    if ipo_dt and ipo_dt.date() >= start_date:
                         filtered_ipos.append(ipo)
                 
                 # Cache for 6 hours

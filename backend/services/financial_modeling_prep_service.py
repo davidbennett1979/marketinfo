@@ -74,7 +74,7 @@ class FinancialModelingPrepService:
                 formatted_earnings.sort(key=lambda x: x['earnings_date'])
                 
                 # Cache for 4 hours
-                self.cache.set(cache_key, formatted_earnings, 'earnings', ttl=14400)
+                self.cache.set(cache_key, formatted_earnings, 'earnings', custom_ttl=14400)
                 
                 logger.info(f"Retrieved {len(formatted_earnings)} earnings from Financial Modeling Prep")
                 return formatted_earnings
@@ -87,6 +87,96 @@ class FinancialModelingPrepService:
             return []
         except Exception as e:
             logger.error(f"Error fetching FMP earnings calendar: {str(e)}")
+            return []
+
+    async def get_ipo_calendar(self, days_ahead: int = 30) -> List[Dict[str, Any]]:
+        """Get upcoming IPO calendar within the next N days."""
+        cache_key = f"fmp:ipo_calendar:upcoming:{days_ahead}"
+        cached_data = self.cache.get(cache_key)
+        if cached_data:
+            return cached_data
+        
+        try:
+            from_date = datetime.now().strftime('%Y-%m-%d')
+            to_date = (datetime.now() + timedelta(days=days_ahead)).strftime('%Y-%m-%d')
+            url = f"{self.base_url}/ipo_calendar"
+            params = { 'from': from_date, 'to': to_date, 'apikey': self.api_key }
+
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(url, params=params)
+                resp.raise_for_status()
+                data = resp.json() or []
+
+            # Normalize to our IPO format
+            results: List[Dict[str, Any]] = []
+            for item in data:
+                low = item.get('priceRangeLow')
+                high = item.get('priceRangeHigh')
+                price_range = None
+                if low is not None and high is not None:
+                    try:
+                        price_range = f"${float(low):.2f}-${float(high):.2f}"
+                    except Exception:
+                        price_range = item.get('price', 'TBD')
+                else:
+                    price_range = item.get('price', 'TBD')
+
+                results.append({
+                    'company': item.get('company', item.get('name', 'Unknown')),
+                    'symbol': item.get('symbol', 'TBD') or 'TBD',
+                    'date': item.get('date', item.get('ipoDate', '')),
+                    'price_range': price_range or 'TBD',
+                    'shares': 'N/A',
+                    'market_cap': 'N/A',
+                    'exchange': item.get('exchange', 'N/A'),
+                    'currency': item.get('currency', 'USD'),
+                    'source': 'Financial Modeling Prep'
+                })
+
+            # Cache for 6 hours
+            self.cache.set(cache_key, results, 'default', custom_ttl=21600)
+            logger.info(f"FMP IPO upcoming fetched: {len(results)} items")
+            return results
+        except httpx.HTTPStatusError as e:
+            logger.error(f"FMP IPO HTTP error: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Error fetching FMP IPO calendar: {e}")
+            return []
+
+    async def get_recent_ipos(self, days_back: int = 30) -> List[Dict[str, Any]]:
+        """Get recent IPOs within the last N days."""
+        cache_key = f"fmp:ipo_calendar:recent:{days_back}"
+        cached = self.cache.get(cache_key)
+        if cached:
+            return cached
+        try:
+            from_date = (datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')
+            to_date = datetime.now().strftime('%Y-%m-%d')
+            url = f"{self.base_url}/ipo_calendar"
+            params = { 'from': from_date, 'to': to_date, 'apikey': self.api_key }
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(url, params=params)
+                resp.raise_for_status()
+                data = resp.json() or []
+            results: List[Dict[str, Any]] = []
+            for item in data:
+                results.append({
+                    'company': item.get('company', item.get('name', 'Unknown')),
+                    'symbol': item.get('symbol', 'TBD') or 'TBD',
+                    'date': item.get('date', item.get('ipoDate', '')),
+                    'price_range': item.get('price', 'TBD'),
+                    'shares': 'N/A',
+                    'market_cap': 'N/A',
+                    'exchange': item.get('exchange', 'N/A'),
+                    'currency': item.get('currency', 'USD'),
+                    'source': 'Financial Modeling Prep'
+                })
+            self.cache.set(cache_key, results, 'default', custom_ttl=21600)
+            logger.info(f"FMP IPO recent fetched: {len(results)} items")
+            return results
+        except Exception as e:
+            logger.error(f"Error fetching FMP recent IPOs: {e}")
             return []
     
     async def get_company_profile(self, symbol: str) -> Optional[Dict[str, Any]]:
@@ -117,7 +207,7 @@ class FinancialModelingPrepService:
                     profile = data[0] if isinstance(data, list) else data
                     
                     # Cache for 24 hours
-                    self.cache.set(cache_key, profile, 'company', ttl=86400)
+                    self.cache.set(cache_key, profile, 'company', custom_ttl=86400)
                     return profile
                     
         except Exception as e:
@@ -169,7 +259,7 @@ class FinancialModelingPrepService:
                     })
                 
                 # Cache for 30 minutes
-                self.cache.set(cache_key, formatted_news, 'news', ttl=1800)
+                self.cache.set(cache_key, formatted_news, 'news', custom_ttl=1800)
                 
                 return formatted_news
                 

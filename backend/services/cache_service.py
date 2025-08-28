@@ -59,14 +59,30 @@ class CacheService:
             return False
     
     def clear_pattern(self, pattern: str) -> int:
-        """Clear all keys matching a pattern using SCAN to avoid blocking."""
+        """Clear all keys matching a pattern.
+        For small keyspaces (<=1000 keys), use KEYS for speed; otherwise SCAN to avoid blocking.
+        """
         try:
             total = 0
+            try:
+                dbsize = int(self.redis_client.dbsize())
+            except Exception:
+                dbsize = None
+
+            if dbsize is not None and dbsize <= 1000:
+                keys = self.redis_client.keys(pattern)
+                if keys:
+                    try:
+                        total += int(self.redis_client.delete(*keys))
+                    except Exception as e:
+                        logger.warning(f"Bulk delete failed for {len(keys)} keys: {e}")
+                return total
+
             for key in self.redis_client.scan_iter(pattern):
                 try:
                     total += int(self.redis_client.delete(key))
                 except Exception as inner_e:
-                    logger.debug(f"Failed to delete key {key}: {inner_e}")
+                    logger.warning(f"Failed to delete key {key}: {inner_e}")
             return total
         except Exception as e:
             logger.error(f"Error clearing pattern from cache: {str(e)}")
