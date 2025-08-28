@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
+import logging
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
@@ -12,6 +13,7 @@ from services.watchlist_service import WatchlistService
 from api.watchlist import get_user_id_from_token
 
 router = APIRouter(prefix="/api/ai", tags=["ai"]) 
+logger = logging.getLogger(__name__)
 ai_service = AIChatService()
 watchlist_service = WatchlistService()
 
@@ -156,9 +158,8 @@ async def chat(
             detail="Query processing timed out. Please try a simpler query."
         )
     except Exception as e:
-        import traceback
-        print(f"ERROR in AI chat endpoint: {str(e)}")
-        print(f"Traceback: {traceback.format_exc()}")
+        # Log the full traceback without exposing it to the client
+        logger.error(f"AI chat endpoint error: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Error processing query: {str(e)}"

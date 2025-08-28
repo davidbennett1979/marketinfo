@@ -17,6 +17,7 @@ class FinancialModelingPrepService:
         self.api_key = os.getenv('FINANCIAL_MODELING_PREP_API_KEY', 'demo')
         self.base_url = "https://financialmodelingprep.com/api/v3"
         self.cache = CacheService()
+        self.client = httpx.AsyncClient(timeout=10.0)
         
         if self.api_key == 'demo':
             logger.warning("Using demo API key for Financial Modeling Prep. Some features may be limited.")
@@ -48,8 +49,7 @@ class FinancialModelingPrepService:
                 'apikey': self.api_key
             }
             
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.get(url, params=params)
+            response = await self.client.get(url, params=params)
                 response.raise_for_status()
                 
                 earnings_data = response.json()
@@ -102,8 +102,7 @@ class FinancialModelingPrepService:
             url = f"{self.base_url}/ipo_calendar"
             params = { 'from': from_date, 'to': to_date, 'apikey': self.api_key }
 
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.get(url, params=params)
+            resp = await self.client.get(url, params=params)
                 resp.raise_for_status()
                 data = resp.json() or []
 
@@ -155,8 +154,7 @@ class FinancialModelingPrepService:
             to_date = datetime.now().strftime('%Y-%m-%d')
             url = f"{self.base_url}/ipo_calendar"
             params = { 'from': from_date, 'to': to_date, 'apikey': self.api_key }
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.get(url, params=params)
+            resp = await self.client.get(url, params=params)
                 resp.raise_for_status()
                 data = resp.json() or []
             results: List[Dict[str, Any]] = []
@@ -198,8 +196,7 @@ class FinancialModelingPrepService:
             url = f"{self.base_url}/profile/{symbol}"
             params = {'apikey': self.api_key}
             
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.get(url, params=params)
+            response = await self.client.get(url, params=params)
                 response.raise_for_status()
                 
                 data = response.json()

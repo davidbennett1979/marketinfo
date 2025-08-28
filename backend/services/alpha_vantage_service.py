@@ -28,6 +28,7 @@ class AlphaVantageService:
         self.cache = CacheService()
         self.request_count = 0
         self.last_request_time = datetime.now()
+        self.client = httpx.AsyncClient(timeout=30.0)
         
     async def _rate_limit(self):
         """Ensure we don't exceed 5 requests per minute"""
@@ -55,28 +56,27 @@ class AlphaVantageService:
         params['apikey'] = self.api_key
         
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(self.base_url, params=params, timeout=30.0)
-                response.raise_for_status()
+            response = await self.client.get(self.base_url, params=params)
+            response.raise_for_status()
+            
+            # Check if response is JSON or CSV
+            content_type = response.headers.get('content-type', '')
+            if 'application/json' in content_type:
+                data = response.json()
                 
-                # Check if response is JSON or CSV
-                content_type = response.headers.get('content-type', '')
-                if 'application/json' in content_type:
-                    data = response.json()
-                    
-                    # Check for API errors
-                    if 'Error Message' in data:
-                        logger.error(f"Alpha Vantage API error: {data['Error Message']}")
-                        return {}
-                        
-                    if 'Note' in data:
-                        logger.warning(f"Alpha Vantage API note: {data['Note']}")
-                        return {}
-                        
-                    return data
-                else:
-                    # Return raw text for CSV responses
-                    return response.text
+                # Check for API errors
+                if 'Error Message' in data:
+                    logger.error(f"Alpha Vantage API error: {data['Error Message']}")
+                    return {}
+                
+                if 'Note' in data:
+                    logger.warning(f"Alpha Vantage API note: {data['Note']}")
+                    return {}
+                
+                return data
+            else:
+                # Return raw text for CSV responses
+                return response.text
                 
         except Exception as e:
             logger.error(f"Error making Alpha Vantage API request: {str(e)}")

@@ -19,6 +19,30 @@ class TechnicalAnalysisService:
     def __init__(self):
         self.cache = {}
         self.cache_duration = 300  # 5 minutes
+        self.max_cache_size = 128   # prevent unbounded growth
+
+    def _evict_if_needed(self):
+        """Evict least-recent entry when cache exceeds max size."""
+        try:
+            if len(self.cache) <= self.max_cache_size:
+                return
+            # Find oldest by timestamp
+            oldest_key = None
+            oldest_ts = None
+            for k, (_, ts) in self.cache.items():
+                if oldest_ts is None or ts < oldest_ts:
+                    oldest_key = k
+                    oldest_ts = ts
+            if oldest_key is not None:
+                self.cache.pop(oldest_key, None)
+        except Exception:
+            # On any error, clear half the cache as a safe fallback
+            try:
+                for i, k in enumerate(list(self.cache.keys())):
+                    if i % 2 == 0:
+                        self.cache.pop(k, None)
+            except Exception:
+                self.cache = {}
     
     async def get_technical_indicators(self, symbol: str, retry_count: int = 3) -> Optional[Dict[str, Any]]:
         """
@@ -57,11 +81,11 @@ class TechnicalAnalysisService:
                 
                 # Fetch stock data with timeout
                 # Get 6 months of daily data for calculations without blocking the event loop
-                async def _fetch_hist():
+                def _fetch_hist_sync():
                     return yf.Ticker(symbol).history(period="6mo")
 
                 try:
-                    hist = await asyncio.wait_for(asyncio.to_thread(_fetch_hist), timeout=15)
+                    hist = await asyncio.wait_for(asyncio.to_thread(_fetch_hist_sync), timeout=15)
                 except asyncio.TimeoutError:
                     logger.warning(f"Timeout fetching historical data for {symbol}")
                     if attempt < retry_count - 1:
@@ -115,6 +139,7 @@ class TechnicalAnalysisService:
                 
                 # Cache the result in both memory and Redis
                 self.cache[cache_key] = (indicators, datetime.now().timestamp())
+                self._evict_if_needed()
                 
                 # Also cache in Redis for 15 minutes
                 try:
